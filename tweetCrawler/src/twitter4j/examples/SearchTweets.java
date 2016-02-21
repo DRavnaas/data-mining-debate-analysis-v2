@@ -16,42 +16,98 @@
 
 package twitter4j.examples;
 
-import twitter4j.*;
-
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
+import java.util.Properties;
+
+import twitter4j.Query;
+import twitter4j.QueryResult;
+import twitter4j.Status;
+import twitter4j.Twitter;
+import twitter4j.TwitterException;
+import twitter4j.TwitterFactory;
+import twitter4j.conf.ConfigurationBuilder;
 
 /**
  * https://raw.githubusercontent.com/yusuke/twitter4j/master/twitter4j-examples/src/main/java/twitter4j/examples/search/SearchTweets.java
  * @author Yusuke Yamamoto - yusuke at mac.com
+ * @author GOPredictors
  * @since Twitter4J 2.1.7
  */
 public class SearchTweets {
-    /**
-     * Usage: java twitter4j.examples.search.SearchTweets [query]
-     *
-     * @param args search query
-     */
-    public static void main(String[] args) {
-        if (args.length < 1) {
-            System.out.println("java twitter4j.examples.search.SearchTweets [query]");
-            System.exit(-1);
-        }
-        Twitter twitter = new TwitterFactory().getInstance();
-        try {
-            Query query = new Query(args[0]);
-            QueryResult result;
-            do {
-                result = twitter.search(query);
-                List<Status> tweets = result.getTweets();
-                for (Status tweet : tweets) {
-                    System.out.println("@" + tweet.getUser().getScreenName() + " - " + tweet.getText());
-                }
-            } while ((query = result.nextQuery()) != null);
-            System.exit(0);
-        } catch (TwitterException te) {
+      public static void main(String[] args) {
+     	
+    	File file = new File("/Users/Yogi/git/data-mining-debate-analysis/config/twitter4j.properties");
+    	Twitter twitter = null;
+    	
+    	// Get Twitter Instance
+		try {
+			twitter = getTwitterInstance(file);
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(-1);
+		}
+    	
+     	String searchString = "#GOPdebate cruz";
+     	
+     	// Perform basic search for the search string
+     	
+     	try{
+		QueryResult result = basicSearch(twitter,searchString);
+     	} catch (TwitterException te) {
             te.printStackTrace();
             System.out.println("Failed to search tweets: " + te.getMessage());
             System.exit(-1);
         }
+			
     }
+
+
+// This method reads the authentication properties from input file, creates 
+ // ConfigurationBuilder from these properties and returns twitter instance
+ // created using the configuration
+ private static Twitter getTwitterInstance(File file) throws IOException {
+
+        Properties prop = new Properties();
+        InputStream is = null;
+        
+        is = new FileInputStream(file);
+        prop.load(is);
+     	
+    	ConfigurationBuilder cb = new ConfigurationBuilder();
+    	cb.setDebugEnabled(true)
+    	  .setOAuthConsumerKey(prop.getProperty("oauth.consumerKey"))
+    	  .setOAuthConsumerSecret(prop.getProperty("oauth.consumerSecret"))
+    	  .setOAuthAccessToken(prop.getProperty("oauth.accessToken"))
+    	  .setOAuthAccessTokenSecret(prop.getProperty("oauth.accessTokenSecret"));
+    	TwitterFactory tf = new TwitterFactory(cb.build());
+    	Twitter twitter = tf.getInstance();
+    	
+       return twitter;
+	}
+ 
+// This methid returns the reults for 
+ private static QueryResult basicSearch(Twitter twitter,String searchString) throws TwitterException {  	 
+         Query query = new Query(searchString);
+         QueryResult result;
+         do {
+             result = twitter.search(query);
+             List<Status> tweets = result.getTweets();
+             
+             for (Status tweet : tweets) {
+                  System.out.println("@" + tweet.getUser().getScreenName() + " - " + tweet.getText());
+             }
+         } while ((query = result.nextQuery()) != null);
+         System.exit(0);
+         
+		return result;
+   
+     
+	}
+
+ 
 }
