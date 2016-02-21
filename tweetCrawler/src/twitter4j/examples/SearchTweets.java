@@ -64,21 +64,19 @@ public class SearchTweets {
     	
      	String searchString = "#GOPdebate cruz";
      	
-     	// Perform basic search for the search string
-     	
+     	/* Perform basic search for the search string */
+    	
      	try{
-     	Query query	= new Query(searchString);
+        Query query = formQuery(searchString);
 		QueryResult result = search(twitter,query);
      	} catch (TwitterException te) {
             te.printStackTrace();
             System.out.println("Failed to do basic search tweets: " + te.getMessage());
             System.exit(-1);
         }
-     	
-     	// Perform Advanced search for the search string
-     	
+   /*    	
      	try{
-          	Query query = formQuery();
+          	Query query = formQuery(searchString);
      		QueryResult advancedResult = batchSearch(twitter,query);
 		
      	} catch (TwitterException te) {
@@ -86,27 +84,29 @@ public class SearchTweets {
             System.out.println("Failed to do advanced search tweets: " + te.getMessage());
             System.exit(-1);
         }
-     	
+ */    	
 			
-    }
+}
 
 
-private static Query formQuery() {
-	long maxId;
+private static Query formQuery(String searchString) {
+	long maxId = 698657892912726016L;
 	long sinceId;
- 	String since = "2015-02-12";
- 	String until = "2015-02-13";
- 	int count = 512;
+ 	String since = "2015-02-15";
+ 	String until = "2015-02-17";
+ 	int count = 100;
 
- 	Query query;
+ 	Query query = new Query(searchString);
 	query.setCount(count);
-    query.setSince(since);
-    query.setUntil(until);
-	//query.setMaxId(maxId);
+    //query.setSince(since);
+    //query.setUntil(until);
+    //query.setResultType(Query.ResultType.recent);
+	
+	query.setMaxId(maxId);
 	//query.setSinceId(sinceId);
 	
 	return query;
-	}
+}
 
 
 
@@ -141,19 +141,19 @@ private static Query formQuery() {
              List<Status> tweets = result.getTweets();
              
              for (Status tweet : tweets) {
-                  System.out.println("@" + tweet.getUser().getScreenName() + " - " + tweet.getText());
+                  System.out.println("id: " + tweet.getId() + "Time: " + tweet.getCreatedAt() );
+                  System.out.println(tweet.getText());
              }
          } while ((query = result.nextQuery()) != null);
          System.exit(0);
          
 		return result;
-   
-     
-	}
+}
 
 //This method performs the basic search on given string and returns the reults  
-private static QueryResult batchSearch(Twitter twitter,Query query) {
- 
+private static QueryResult batchSearch(Twitter twitter,Query query) throws TwitterException{
+	
+	  QueryResult result = null;
    	  long lastID = query.getMaxId();
 	  int numberOfTweets = query.getCount();
 
@@ -164,11 +164,12 @@ private static QueryResult batchSearch(Twitter twitter,Query query) {
 	    else 
 	      query.setCount(numberOfTweets - tweets.size());
 	    try {
-	      QueryResult result = twitter.search(query);
+	       result = twitter.search(query);
 	      tweets.addAll(result.getTweets());
 	      System.out.println("Gathered " + tweets.size() + " tweets");
 	      for (Status t: tweets) 
-	        if(t.getId() < lastID) lastID = t.getId();
+	        if(t.getId() < lastID) 
+	        	lastID = t.getId();
 
 	    }
 
@@ -194,9 +195,10 @@ private static QueryResult batchSearch(Twitter twitter,Query query) {
 	    else 
 	    	 System.out.println(i + " USER: " + user + " wrote: " + msg);
 	  }
+	  
+	 return  result;
 	}
-	}
-
-
- 
 }
+
+
+
