@@ -41,8 +41,17 @@ import twitter4j.conf.ConfigurationBuilder;
  */
 public class SearchTweets {
       public static void main(String[] args) {
-     	
-    	File file = new File("/Users/Yogi/git/data-mining-debate-analysis/config/twitter4j.properties");
+      	//File file = new File("/Users/Yogi/git/data-mining-debate-analysis/config/
+    	// Look for config file using relative dir - in tweetCrawler/config folder 
+    	File file = new File("config/twitter4j.properties");
+    	System.out.println("Reading config properties from:");
+    	System.out.println(file.getAbsolutePath());
+    	if (!file.exists())
+    	{
+    		System.out.println("No configuration file found");
+            System.exit(-1);
+    	}
+    	
     	Twitter twitter = null;
     	
     	// Get Twitter Instance
