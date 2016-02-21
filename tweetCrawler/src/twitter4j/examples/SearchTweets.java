@@ -18,12 +18,13 @@ package twitter4j.examples;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
+import twitter4j.GeoLocation;
 import twitter4j.Query;
 import twitter4j.QueryResult;
 import twitter4j.Status;
@@ -57,14 +58,47 @@ public class SearchTweets {
      	// Perform basic search for the search string
      	
      	try{
-		QueryResult result = basicSearch(twitter,searchString);
+     	Query query	= new Query(searchString);
+		QueryResult result = search(twitter,query);
      	} catch (TwitterException te) {
             te.printStackTrace();
-            System.out.println("Failed to search tweets: " + te.getMessage());
+            System.out.println("Failed to do basic search tweets: " + te.getMessage());
             System.exit(-1);
         }
+     	
+     	// Perform Advanced search for the search string
+     	
+     	try{
+          	Query query = formQuery();
+     		QueryResult advancedResult = batchSearch(twitter,query);
+		
+     	} catch (TwitterException te) {
+            te.printStackTrace();
+            System.out.println("Failed to do advanced search tweets: " + te.getMessage());
+            System.exit(-1);
+        }
+     	
 			
     }
+
+
+private static Query formQuery() {
+	long maxId;
+	long sinceId;
+ 	String since = "2015-02-12";
+ 	String until = "2015-02-13";
+ 	int count = 512;
+
+ 	Query query;
+	query.setCount(count);
+    query.setSince(since);
+    query.setUntil(until);
+	//query.setMaxId(maxId);
+	//query.setSinceId(sinceId);
+	
+	return query;
+	}
+
 
 
 // This method reads the authentication properties from input file, creates 
@@ -90,9 +124,8 @@ public class SearchTweets {
        return twitter;
 	}
  
-// This methid returns the reults for 
- private static QueryResult basicSearch(Twitter twitter,String searchString) throws TwitterException {  	 
-         Query query = new Query(searchString);
+// This method performs the basic search on given string and returns the reults  
+ private static QueryResult search(Twitter twitter,Query query) throws TwitterException {  	 
          QueryResult result;
          do {
              result = twitter.search(query);
@@ -108,6 +141,53 @@ public class SearchTweets {
    
      
 	}
+
+//This method performs the basic search on given string and returns the reults  
+private static QueryResult batchSearch(Twitter twitter,Query query) {
+ 
+   	  long lastID = query.getMaxId();
+	  int numberOfTweets = query.getCount();
+
+	  ArrayList<Status> tweets = new ArrayList<Status>();
+	  while (tweets.size () < numberOfTweets) {
+	    if (numberOfTweets - tweets.size() > 100)
+	      query.setCount(100);
+	    else 
+	      query.setCount(numberOfTweets - tweets.size());
+	    try {
+	      QueryResult result = twitter.search(query);
+	      tweets.addAll(result.getTweets());
+	      System.out.println("Gathered " + tweets.size() + " tweets");
+	      for (Status t: tweets) 
+	        if(t.getId() < lastID) lastID = t.getId();
+
+	    }
+
+	    catch (TwitterException te) {
+	    	 System.out.println("Couldn't connect: " + te);
+	    }; 
+	    query.setMaxId(lastID-1);
+	  }
+
+	  for (int i = 0; i < tweets.size(); i++) {
+	    Status t = (Status) tweets.get(i);
+
+	    GeoLocation loc = t.getGeoLocation();
+
+	    String user = t.getUser().getScreenName();
+	    String msg = t.getText();
+	    String time = "";
+	    if (loc!=null) {
+	      Double lat = t.getGeoLocation().getLatitude();
+	      Double lon = t.getGeoLocation().getLongitude();
+	      System.out.println(i + " USER: " + user + " wrote: " + msg + " located at " + lat + ", " + lon);
+	    } 
+	    else 
+	    	 System.out.println(i + " USER: " + user + " wrote: " + msg);
+	  }
+	}
+	}
+
 
  
 }
