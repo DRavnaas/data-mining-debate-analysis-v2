@@ -6,6 +6,7 @@ import twitter4j.Query.ResultType;
 import twitter4j.conf.ConfigurationBuilder;
 
 import java.io.*;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Properties;
 
@@ -37,7 +38,7 @@ public final class saveToCSV {
 			System.exit(-1);
 		}
     	
-     	String searchString = "#GOPdebate cruz";
+     	String searchString = "weahter";
      	
      	// Perform basic search for the search string
      	
@@ -53,30 +54,75 @@ public final class saveToCSV {
     }
  
  //Ran added*************************************************************************************************   
-    public static void storeTweets(QueryResult queryResult) {
+    
+    //input: queryResult, targetcsv filename, flag for if retweets need to be filtered out
+    public static void storeTweets(QueryResult queryResult, String targetCSV, boolean filterOutRetweet) {
     	if (queryResult==null) return;
     	List<Status> tweets = queryResult.getTweets();
     	CSVWriter writer = null;
+    	CSVReader reader = null;
     	try {
     		new File("savedTweets").mkdir();
     		
-    		//get target CSV file object, the file name is specify by query string, 
-    		//replaced : with %~ in the string, since windows doesn't allow to have : in filename 
-    		File targetCSVFile = new File("savedTweets/"+queryResult.getQuery().replaceAll(":", "%~")+".csv");
+    		//get target CSV file object, the file name is specify by parameter targetCSV, 
+    		//It will also check if there is already a ".csv" in the giving csv file name. 
+    		if (targetCSV.endsWith(".csv") || targetCSV.endsWith(".CSV"))
+    			targetCSV = targetCSV.substring(0, targetCSV.length()-4);
+    		File targetCSVFile = new File("savedTweets/"+targetCSV+".csv");
     		
-    		//create or open target csv file, if target csv file already exists, new records will be append to that file.
+    		
+    		
+    		//lookup table for avoiding duplicates
+    		Hashtable<String, String[]> lookupTable = new Hashtable<String, String[]>();
+    		
+    		
+    		
+    		//if the target csv file exists, read each recorder and store it to a hashtable to avoid duplicates
+    		//an existing tweet record will be a string array {tweetID, username, creattime, timezone, tweettext}
+    		//tweetID is used as key in storing to hashtable. 
+    		if (targetCSVFile.exists()) {
+    			reader = new CSVReader(new FileReader(targetCSVFile));
+    		
+    			String [] nextLine;
+	    	    while ((nextLine = reader.readNext()) != null) {
+	    	        // nextLine[] is an array of values from the line
+	    	    	lookupTable.put(nextLine[0], nextLine);
+	    	    }
+	    	    reader.close();
+	    	    reader = null;
+    		}
+    		
+    		
+    		
+    		//open csv writer to add new tweet records to target csv file.
     		writer = new CSVWriter(new FileWriter(targetCSVFile,true));
+    		
+    		
     		 
-    		//for each tweet record, write one line to target csv
-    		//for each record, stored createAt,TimeZone and whole tweet text
+    		//process query result, for each tweet record, if it doesn't already exist in the target csv file, write one line to target csv
+    		//for each new record, stored tweetID, username createAt,TimeZone and whole tweet text
+    		//added prefix "ID" to each tweet id, so it won't be shown as a large number in csv file
             for (Status status : tweets) {
-            	 String[] tweetRecord={status.getCreatedAt().toString(), status.getUser().getTimeZone(),status.getText()};
-                 writer.writeNext(tweetRecord);
+            	 //if retweet need to be filtered out.
+            	 if ((filterOutRetweet)&& status.isRetweet())
+            		 continue;
+            	 String[] tweetRecord={"ID"+String.valueOf(status.getId()),status.getUser().getName(), status.getCreatedAt().toString(), status.getUser().getTimeZone(),status.getText()};
+            	 if (lookupTable.get(tweetRecord[0])== null) {
+            		 lookupTable.put(tweetRecord[0], tweetRecord);
+            		 writer.writeNext(tweetRecord);
+            	 }
             }
          } catch (IOException ioe) {
              ioe.printStackTrace();
              System.out.println("Failed to store tweets: " + ioe.getMessage());
          } finally {
+        	 if (reader != null) {
+                 try {
+                	 reader.close();
+                 } catch (IOException ignore) {
+                 }
+              }
+        	 
              if (writer != null) {
                  try {
                 	 writer.flush();
@@ -123,8 +169,8 @@ public final class saveToCSV {
         int maxCount = 150;
         
         query.resultType(ResultType.recent);
-        query.since("2016-02-12");  // >=  this date
-        query.until("2016-02-13");  // < this date
+        query.since("2016-02-20");  // >=  this date
+        query.until("2016-02-21");  // < this date
         
         QueryResult result = null;
         do {
@@ -145,7 +191,7 @@ public final class saveToCSV {
        	 
             result = twitter.search(query);
             List<Status> tweets = result.getTweets();
-            storeTweets(result);
+            storeTweets(result,"targetCSV", false);
             curCount = curCount + tweets.size();
             
             System.out.println("Number of tweets returned = " + tweets.size());
