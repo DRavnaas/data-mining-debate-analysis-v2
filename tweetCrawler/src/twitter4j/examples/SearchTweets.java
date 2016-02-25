@@ -90,7 +90,7 @@ public class SearchTweets {
 
 private static Query formQuery(String searchString) {
 	long maxId = 698657892912726016L;
-	long sinceId;
+	long sinceId = 688657892912720000L; ;
  	String since = "2015-02-15";
  	String until = "2015-02-17";
  	int count = 100;
@@ -102,7 +102,7 @@ private static Query formQuery(String searchString) {
     //query.setResultType(Query.ResultType.recent);
 	
 	query.setMaxId(maxId);
-	//query.setSinceId(sinceId);
+	query.setSinceId(sinceId);
 	
 	return query;
 }
