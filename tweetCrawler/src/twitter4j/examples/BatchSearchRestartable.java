@@ -173,6 +173,7 @@ public class BatchSearchRestartable {
 
 		cb.setOAuth2TokenType(token.getTokenType());
 		cb.setOAuth2AccessToken(token.getAccessToken());
+		cb.setJSONStoreEnabled(true);
 
 		//	And create the Twitter object!
 		return new TwitterFactory(cb.build()).getInstance();
