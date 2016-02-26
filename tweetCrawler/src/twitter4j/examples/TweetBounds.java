@@ -35,7 +35,7 @@ public class TweetBounds {
         this.query = query;
         
         // Borrow some of Yogi's filebase code?
-        String filename = "CachedBounds_" + query.hashCode();
+        String filename = "CachedBounds_" + query.hashCode() + ".txt";
         File cacheFile = new File(filename);
         
         if (!cacheFile.exists())
@@ -76,7 +76,7 @@ public class TweetBounds {
     public void saveTweetBounds() throws IOException
     {
         // Borrow some of Yogi's filebase code?
-        String filename = "CachedBounds_" + query.hashCode();
+        String filename = "CachedBounds_" + query.hashCode() + ".txt";
         
         BufferedWriter wr=null;
         try{
