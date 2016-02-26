@@ -296,7 +296,7 @@ public class BatchSearchRestartable {
 			//	This is the loop that retrieve multiple blocks of tweets from Twitter
 			for (int queryNumber=0;queryNumber < MAX_QUERIES; queryNumber++)
 			{
-				System.out.printf("\n\n!!! Starting loop %d\n\n", queryNumber);
+				System.out.printf("\n\n!!! Starting loop %d, sinceId = %d, maxId= %d\n\n", queryNumber, tb.sinceID, tb.maxID);
 
 				//	Do we need to delay because we've already hit our rate limits?
 				if (searchTweetsRateLimit.getRemaining() == 0)
@@ -347,8 +347,8 @@ public class BatchSearchRestartable {
 				}
 
 
-				if (false)
-				{
+				//if (false)
+				//{
 					// DELETE THIS LOOP AND REPLACE WITH SAVE
 					//	loop through all the tweets and process them.  In this sample program, we just print them
 					//	out, but in a real application you might save them to a database, a CSV file, do some
@@ -357,7 +357,7 @@ public class BatchSearchRestartable {
 					for (Status s: r.getTweets())				// Loop through all the tweets...
 					{
 						//	Increment our count of tweets retrieved
-						totalTweets++;
+						//totalTweets++;
 
 						//	Keep track of the lowest tweet ID.  If you do not do this, you cannot retrieve multiple
 						//	blocks of tweets...
@@ -367,13 +367,13 @@ public class BatchSearchRestartable {
 						}
 
 						//	Do something with the tweet....
-						System.out.printf("At %s, @%-20s said:  %s\n",
-									  	s.getCreatedAt().toString(),
-									  	s.getUser().getScreenName(),
-									  	cleanText(s.getText()));
+						//System.out.printf("At %s, @%-20s said:  %s\n",
+						//			  	s.getCreatedAt().toString(),
+						//			  	s.getUser().getScreenName(),
+						//			  	cleanText(s.getText()));
 
 					}	
-				}
+				//}
 
 				
 				
