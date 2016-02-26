@@ -353,7 +353,8 @@ public class BatchSearchRestartable {
 					//	loop through all the tweets and process them.  In this sample program, we just print them
 					//	out, but in a real application you might save them to a database, a CSV file, do some
 					//	analysis on them, whatever...
-
+					long lowestIdInBatch = -1;  // these are compared as unsigned longs, so -1 is max.
+					long highestIdInBatch = 0;
 					for (Status s: r.getTweets())				// Loop through all the tweets...
 					{
 						//	Increment our count of tweets retrieved
@@ -361,9 +362,21 @@ public class BatchSearchRestartable {
 
 						//	Keep track of the lowest tweet ID.  If you do not do this, you cannot retrieve multiple
 						//	blocks of tweets...
-						if (tb.maxID == -1 || s.getId() < tb.maxID)
+						if (Long.compareUnsigned(s.getId(), tb.maxID) < 0)
 						{	
-							tb.maxID = s.getId();	
+							// this is our max id for the next batch = lower than 
+							// any in this batch since we are going back in time.
+							tb.maxID = s.getId();							
+						}
+						
+						if (Long.compareUnsigned(highestIdInBatch,  s.getId()) < 0)
+						{
+							highestIdInBatch = s.getId();
+						}
+						
+						if (Long.compareUnsigned(lowestIdInBatch,  s.getId()) > 0)
+						{
+							lowestIdInBatch = s.getId();
 						}
 
 						//	Do something with the tweet....
@@ -380,6 +393,8 @@ public class BatchSearchRestartable {
 			
 				
 				// STORE TWEETS HERE?
+				System.out.println("  Batch tweet ids range = " + lowestIdInBatch + " to " + highestIdInBatch);	
+					
 		        // TODO - write versus append on file?
 				// ie: this is only writing the number of tweets per query,
 				// it's not rolling over at 2000.
