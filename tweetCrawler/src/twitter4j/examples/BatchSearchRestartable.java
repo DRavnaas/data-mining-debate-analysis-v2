@@ -216,11 +216,11 @@ public class BatchSearchRestartable {
 	            int candidateNameArg = 0;
 	            if (args.length == 5)
 	            {
-	            	candidateNameArg = 5;
+	            	candidateNameArg = 4;
 	            }
 	            if (args.length == 3)
 	            {
-	            	candidateNameArg = 3;
+	            	candidateNameArg = 2;
 	            }
 	            if (candidateNameArg != 0)
 	            {
