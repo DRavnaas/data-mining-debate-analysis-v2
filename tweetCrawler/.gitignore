@@ -3,6 +3,9 @@
 
 twitter4j.properties
 
+*.json
+CachedBounds_*
+
 *.class
 build/
 target/
