@@ -47,17 +47,9 @@ public class SaveTweets {
 	SaveTweets(int maxCount, String fileBase) {
 		this.maxCount = maxCount;
 		this.fileBase = fileBase;
-        this.currentFile = this.fileBase + "_0.json";
+        this.currentFile = this.fileBase + "_1.json";
         this.nextThreshold = maxCount;
 	}
-	
-	       public static String cleanText(String text)
-	        {
-	                text = text.replace("\n", "\\n");
-	                text = text.replace("\t", "\\t");
-
-	                return text;
-	        }
 	
 	//Storing function
 	//inputs:
@@ -73,24 +65,14 @@ public class SaveTweets {
             osw = new OutputStreamWriter(fos, "UTF-8");
             bw = new BufferedWriter(osw);
             for (Status status : Result.getTweets()) {
-            	
-                // TODO: get JSON working
-                String rawJSON =  status.getCreatedAt().toString() + " " + 
-                        status.getUser().getScreenName() + " " +
-                        cleanText(status.getText());
-                
-                //String rawJSON = TwitterObjectFactory.getRawJSON(status);
-            	
-                
-                bw.write(rawJSON);
+            	String rawJSON = TwitterObjectFactory.getRawJSON(status);
+            	bw.write(rawJSON);
                 bw.newLine();
                 bw.flush();
            }    
         }catch (Exception e) {
             e.printStackTrace();
             System.out.println("Failed to store tweets: " + e.getMessage());
-            
-            // don't continue if you can't store tweets
             throw e;
         } finally {
         	//decide if a new file is needed by checking if the total count of 
@@ -98,7 +80,7 @@ public class SaveTweets {
         	//if so set currentFile to next filename and increase threshold by maxcount
         	if (Result.getCount() + currentCount >= nextThreshold) {
         		nextThreshold += maxCount;
-        		this.currentFile = this.fileBase + "_" + String.valueOf(currentCount+Result.getCount())+".json";
+        		this.currentFile = this.fileBase + "_" + String.valueOf(currentCount+Result.getCount()+1)+".json";
         	}
             if (bw != null) {
                 try {
