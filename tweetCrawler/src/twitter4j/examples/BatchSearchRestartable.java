@@ -27,6 +27,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Map;
 import java.util.Properties;
 
@@ -67,6 +69,19 @@ public class BatchSearchRestartable {
 	}
 
 
+	private static String getBaseFileName(String prefix, int tweetCount) {
+	    
+	    // Get current timestamp
+	    String timestamp = new SimpleDateFormat("yyyyMMddhhmm").format(new Date());
+	    
+	    // Build output file name
+	    // TODO: add this, and make Ran's call this (move into that file?)
+	    String fileName = prefix + "_" + timestamp;   // + "_" + tweetCount + ".json";
+	          System.out.println(fileName);
+	          
+	  return fileName;
+	}
+	
 	/**
 	 * Retrieve the "bearer" token from Twitter in order to make application-authenticated calls.
 	 *
@@ -117,7 +132,9 @@ public class BatchSearchRestartable {
 		cb.setApplicationOnlyAuthEnabled(true);
 
 		cb.setOAuthConsumerKey(CONSUMER_KEY).setOAuthConsumerSecret(CONSUMER_SECRET);
- 
+
+		cb.setJSONStoreEnabled(true);
+		
 		try
 		{
 			token = new TwitterFactory(cb.build()).getInstance().getOAuth2Token();
@@ -197,6 +214,9 @@ public class BatchSearchRestartable {
 	        }        
        
 	    
+	        // TODO - replace with Yogi's file base
+	        String fileBase = getBaseFileName("" + SEARCH_TERM.hashCode(), 0);
+	        SaveTweets tweetStore = new SaveTweets(maxTweetsOverall, fileBase);
 	    
 		//	We're curious how many tweets, in total, we've retrieved.  Note that TWEETS_PER_QUERY is an upper limit,
 		//	but Twitter can and often will retrieve far fewer tweets
@@ -325,10 +345,10 @@ public class BatchSearchRestartable {
 			
 				
 				// STORE TWEETS HERE?
+				tweetStore.storeQueryResult(totalTweets, r);
 
-                                // Uncomment this so we have the total tweet count
-                                // totalTweets = totalTweets + r.getTweets.size();
-
+                                // Keep track of how many we've processed. 
+                                totalTweets = totalTweets + r.getTweets().size();
 				
 				// Once we have successfully stored our tweets...
 				tb.saveTweetBounds();

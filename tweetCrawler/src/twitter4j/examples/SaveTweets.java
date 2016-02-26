@@ -51,11 +51,19 @@ public class SaveTweets {
         this.nextThreshold = maxCount;
 	}
 	
+	       public static String cleanText(String text)
+	        {
+	                text = text.replace("\n", "\\n");
+	                text = text.replace("\t", "\\t");
+
+	                return text;
+	        }
+	
 	//Storing function
 	//inputs:
 	//    currentCount: current total count of tweets save for this filebase
 	//    Result: query result to be store at this time. 
-	public void storeQueryResult(int currentCount, QueryResult Result) {
+	public void storeQueryResult(int currentCount, QueryResult Result) throws Exception {
 		FileOutputStream fos = null;
         OutputStreamWriter osw = null;
         BufferedWriter bw = null;
@@ -65,14 +73,25 @@ public class SaveTweets {
             osw = new OutputStreamWriter(fos, "UTF-8");
             bw = new BufferedWriter(osw);
             for (Status status : Result.getTweets()) {
-            	String rawJSON = TwitterObjectFactory.getRawJSON(status);
-            	bw.write(rawJSON);
+            	
+                // TODO: get JSON working
+                String rawJSON =  status.getCreatedAt().toString() + " " + 
+                        status.getUser().getScreenName() + " " +
+                        cleanText(status.getText());
+                
+                //String rawJSON = TwitterObjectFactory.getRawJSON(status);
+            	
+                
+                bw.write(rawJSON);
                 bw.newLine();
                 bw.flush();
            }    
         }catch (Exception e) {
             e.printStackTrace();
             System.out.println("Failed to store tweets: " + e.getMessage());
+            
+            // don't continue if you can't store tweets
+            throw e;
         } finally {
         	//decide if a new file is needed by checking if the total count of 
         	//tweets exceeds the threshold to create a new file.
