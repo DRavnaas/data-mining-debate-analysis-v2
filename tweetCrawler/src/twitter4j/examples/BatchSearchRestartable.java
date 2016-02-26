@@ -53,6 +53,9 @@ public class BatchSearchRestartable {
 	private static String SEARCH_TERM			= "GOPDebate AND Trump";
 
 	private static int maxTweetsOverall = TWEETS_PER_QUERY * MAX_QUERIES;
+	
+	// Threshold at which we rollover storing tweets to a new output file.
+	private static int BATCH_STORE_THRESHOLD = 2000;
 
 	/**
 	 * Replace newlines and tabs in text with escaped versions to making printing cleaner
@@ -76,8 +79,9 @@ public class BatchSearchRestartable {
 	    
 	    // Build output file name
 	    // TODO: add this, and make Ran's call this (move into that file?)
-	    String fileName = prefix + "_" + timestamp;   // + "_" + tweetCount + ".json";
-	          System.out.println(fileName);
+	    String fileName = prefix + "_" + timestamp  + "_" + tweetCount + ".json";
+	    //System.out.println("Output file =  " + fileName);
+	          
 	          
 	  return fileName;
 	}
@@ -182,17 +186,21 @@ public class BatchSearchRestartable {
 	public static void main(String[] args) throws Exception
 	{
             TweetBounds tb = new TweetBounds();
+            String candidateName = null;
 	    
-	        // args:  [query [maxtweets [sinceid maxid]]]
+	        // args:  [query  [maxtweets [sinceid maxid] candidateName]]
 	        if (args.length >= 1)
 	        {
 	            SEARCH_TERM = args[0];
 	        }   
+	        
+	        // Default file prefix (if none input as an arg)
+	        candidateName = "queryHash" + SEARCH_TERM.hashCode();
 
 	        // Initialize since and max ids for this query, if we've stored them from previous searches.
-                tb.initTweetBounds(SEARCH_TERM);
+            tb.initTweetBounds(SEARCH_TERM);
 
-                // Set some parameters about how many tweets we will grab and how far back.
+            // Set some parameters about how many tweets we will grab and how far back.
 	        if (args.length >= 2)
 	        {
 	            // Adjust the # queries for the number of max tweets we want (there could be less)
@@ -204,24 +212,45 @@ public class BatchSearchRestartable {
 	                MAX_QUERIES++;
 	            }                    
 
+	            // Candidate name (= file prefix) can be 3rd parameter or 5th
+	            int candidateNameArg = 0;
+	            if (args.length == 5)
+	            {
+	            	candidateNameArg = 5;
+	            }
+	            if (args.length == 3)
+	            {
+	            	candidateNameArg = 3;
+	            }
+	            if (candidateNameArg != 0)
+	            {
+	            	candidateName = args[candidateNameArg];
+	            }
+	            
 	            // If since and max are on the command line, use those
 	            if (args.length >= 4)
 	            {	                
 	                tb.sinceID = Long.parseLong(args[2]);
 	                tb.maxID = Long.parseLong(args[3]);	   
 	                
-	                System.out.println("Using cached since/max values for the query");
+	                System.out.println("Using input since/max values for the query");
 	            }	            
+	            
 	        }        
        
-	    
-	        // TODO - replace with Yogi's file base
-	        String fileBase = getBaseFileName("" + SEARCH_TERM.hashCode(), 0);
-	        SaveTweets tweetStore = new SaveTweets(maxTweetsOverall, fileBase);
+            System.out.println("Running queries with:");
+            System.out.println("  Query:                 " + SEARCH_TERM);
+            System.out.println("  Overall max # tweets:  " + maxTweetsOverall);
+            System.out.println("  Starting tweet id:     " + tb.sinceID);
+            System.out.println("  Max tweet id:          " + tb.maxID);
+            System.out.println("  Output file prefix:    " + candidateName);     
+            System.out.println();
+   
 	    
 		//	We're curious how many tweets, in total, we've retrieved.  Note that TWEETS_PER_QUERY is an upper limit,
 		//	but Twitter can and often will retrieve far fewer tweets
 		int	totalTweets = 0;
+		int currentBatchSaved = 0;
 
 		//	This variable is the key to our retrieving multiple blocks of tweets.  In each batch of tweets we retrieve,
 		//	we use this variable to remember the LOWEST tweet ID.  Tweet IDs are (java) longs, and they are roughly
@@ -233,6 +262,8 @@ public class BatchSearchRestartable {
 
 		Twitter twitter = getTwitter();
 
+        String fileBase = getBaseFileName(candidateName, totalTweets);
+		
 		//	Now do a simple search to show that the tokens work
 		try
 		{
@@ -316,29 +347,32 @@ public class BatchSearchRestartable {
 				}
 
 
-				// DELETE THIS LOOP AND REPLACE WITH SAVE
-				//	loop through all the tweets and process them.  In this sample program, we just print them
-				//	out, but in a real application you might save them to a database, a CSV file, do some
-				//	analysis on them, whatever...
-				for (Status s: r.getTweets())				// Loop through all the tweets...
+				if (false)
 				{
-					//	Increment our count of tweets retrieved
-					totalTweets++;
+					// DELETE THIS LOOP AND REPLACE WITH SAVE
+					//	loop through all the tweets and process them.  In this sample program, we just print them
+					//	out, but in a real application you might save them to a database, a CSV file, do some
+					//	analysis on them, whatever...
 
-					//	Keep track of the lowest tweet ID.  If you do not do this, you cannot retrieve multiple
-					//	blocks of tweets...
-					if (tb.maxID == -1 || s.getId() < tb.maxID)
+					for (Status s: r.getTweets())				// Loop through all the tweets...
 					{
-						tb.maxID = s.getId();
-					}
+						//	Increment our count of tweets retrieved
+						totalTweets++;
 
-					//	Do something with the tweet....
-					System.out.printf("At %s, @%-20s said:  %s\n",
-									  s.getCreatedAt().toString(),
-									  s.getUser().getScreenName(),
-									  cleanText(s.getText()));
+						//	Keep track of the lowest tweet ID.  If you do not do this, you cannot retrieve multiple
+						//	blocks of tweets...
+						if (tb.maxID == -1 || s.getId() < tb.maxID)
+						{	
+							tb.maxID = s.getId();	
+						}
 
-					
+						//	Do something with the tweet....
+						System.out.printf("At %s, @%-20s said:  %s\n",
+									  	s.getCreatedAt().toString(),
+									  	s.getUser().getScreenName(),
+									  	cleanText(s.getText()));
+
+					}	
 				}
 
 				
@@ -346,10 +380,27 @@ public class BatchSearchRestartable {
 			
 				
 				// STORE TWEETS HERE?
-				tweetStore.storeQueryResult(totalTweets, r);
+		        // TODO - write versus append on file?
+				// ie: this is only writing the number of tweets per query,
+				// it's not rolling over at 2000.
+				if ((currentBatchSaved == 0) || (currentBatchSaved >= BATCH_STORE_THRESHOLD))
+				{
+					// Rollover to new file
+			        fileBase = getBaseFileName(candidateName, totalTweets);
+			        currentBatchSaved = 0;
+			        
+			        // Overwrite any current  file, do not append.
+			        SaveTweets.storeQueryResult(fileBase, r, false);
+					
+				}
+				else {
+					// Append to current file for this batch.
+					SaveTweets.storeQueryResult(fileBase, r, true);
+				}
 
-                                // Keep track of how many we've processed. 
-                                totalTweets = totalTweets + r.getTweets().size();
+                // Keep track of how many we've processed. 
+                totalTweets = totalTweets + r.getTweets().size();
+                currentBatchSaved = currentBatchSaved + r.getTweets().size();
 				
 				// Once we have successfully stored our tweets...
 				tb.saveTweetBounds();
