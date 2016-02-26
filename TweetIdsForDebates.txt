@@ -1,0 +1,43 @@
+
+We will tweet at certain times so we can get tweet ids to help limit our timeframe
+
+Query: https://api.twitter.com/1.1/statuses/user_timeline.json?user_id=GOPPredictors
+
+t0 since id = from tweet on Wed 11:30pm est 
+t1 max id = tweet from around 8:30pm Thurs est (= debate start)
+
+t2 tweet at debate end
+t3 tweet at day after debate end
+
+max queries * tweets per query = max # of tweets we want to process
+
+2 days x 3 people x 24 hrs / 1 x 60 min/ 1 x 1 batch / 15 min x 450 tweets/ 1 batch = 
+
+goal: 20k before and after on each query (prefiltered)
+
+cmdline args: "query" maxtweets sinceid maxid
+"gopdebate cruz" 200 702712234468909000 703033112868102100
+
+Feb 25th:
+
+	t0 = Feb 24th at 11:30-ish pm est (= Feb 25th at 4:30 ish am gmt)
+	t1 = Feb 25th at 8:30-ish pm est (= Feb 26th, 1:30-ish am gmt)
+	t2 = ?
+	t3 = ?
+
+t0: "created_at": "Thu Feb 25 04:30:27 +0000 2016",
+    "id": 702712234468909000,
+    "id_str": "702712234468909056",
+    "text": "2/24 11:30 pm est",
+
+t1: "created_at": "Fri Feb 26 01:45:30 +0000 2016",
+    "id": 703033112868102100,
+    "id_str": "703033112868102144",
+    "text": "around debate start (#Trump!!!)",
+
+t2: "created_at": "Fri Feb 26 04:38:48 +0000 2016",
+    "id": 703076723756240900,
+    "id_str": "703076723756240896",
+
+t3:
+
