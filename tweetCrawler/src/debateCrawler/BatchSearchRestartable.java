@@ -9,6 +9,21 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Properties;
 
+// Argument examples:
+//  "GOPDebate AND Trump" 230 0 703380244661538816 TrumpFolder\TrumpFile
+//  Query = GOPDebate AND Trump
+//  max # tweets to store = 230
+//  since id = 0, max id = 703380244661538816
+//  Output folder TrumpFolder, output file prefix = TrumpFile (TrumpFolder must exist)
+
+//  "GOPDebate AND Trump" 230 TrumpDebate 
+//  Query = GOPDebate AND Trump
+//  max # tweets to store = 230
+//  since id and max id will be either the previously cached values in TrumpDebate_CachedBounds*.txt
+//    OR if that file doesn't exist, then they are set to 0 and -1 (= most recent tweets)
+//  since id = 0, max id = -1 (= start at most recent tweets)
+//  Output file prefix = TrumpDebate (in current dir)
+
 // taken from 
 // http://www.socialseer.com/twitter-programming-in-java-with-twitter4j/how-to-retrieve-more-than-100-tweets-with-the-twitter-api-and-twitter4j/
 /**
