@@ -25,6 +25,10 @@ Feb 25th:
 	t2 = ?
 	t3 = ?
 
+	before = t0  to t1
+	during = t1 to t2
+	after =  t2 to t3
+
 t0: "created_at": "Thu Feb 25 04:30:27 +0000 2016",
     "id": 702712234468909000,
     "id_str": "702712234468909056",

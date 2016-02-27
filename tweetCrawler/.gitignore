@@ -4,7 +4,7 @@
 twitter4j.properties
 
 *.json
-CachedBounds_*.txt
+*CachedBounds_*.txt
 
 *.class
 build/
