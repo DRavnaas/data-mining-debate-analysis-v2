@@ -1,4 +1,6 @@
 
+Debate on Feb 25th = last debate before super Tuesday
+
 We will tweet at certain times so we can get tweet ids to help limit our timeframe
 
 Query: https://api.twitter.com/1.1/statuses/user_timeline.json?user_id=GOPPredictors
@@ -22,8 +24,8 @@ Feb 25th:
 
 	t0 = Feb 24th at 11:30-ish pm est (= Feb 25th at 4:30 ish am gmt)
 	t1 = Feb 25th at 8:30-ish pm est (= Feb 26th, 1:30-ish am gmt)
-	t2 = ?
-	t3 = ?
+	t2 = Feb 25th at 11:00-ish pm est (= Feb 26th 4:00 ish am gmt)
+	t3 = Feb 26th at 11:00 ish pm est (= Feb 27th 4:00 ish am gmt)
 
 	before = t0  to t1
 	during = t1 to t2
@@ -43,5 +45,11 @@ t2: "created_at": "Fri Feb 26 04:38:48 +0000 2016",
     "id": 703076723756240900,
     "id_str": "703076723756240896",
 
-t3:
+t3: 
+
+OR
+
+    "created_at": "Sun Feb 28 14:40:54 +0000 2016",
+    "id": 703953026340491300,
+    "id_str": "703953026340491264",
 

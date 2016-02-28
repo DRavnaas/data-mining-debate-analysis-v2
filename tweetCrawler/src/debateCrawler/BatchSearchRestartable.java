@@ -24,6 +24,8 @@ import java.util.Properties;
 //  since id = 0, max id = -1 (= start at most recent tweets)
 //  Output file prefix = TrumpDebate (in current dir)
 
+
+
 // taken from 
 // http://www.socialseer.com/twitter-programming-in-java-with-twitter4j/how-to-retrieve-more-than-100-tweets-with-the-twitter-api-and-twitter4j/
 /**
@@ -47,6 +49,7 @@ import twitter4j.QueryResult;
 import twitter4j.RateLimitStatus;
 import twitter4j.Status;
 import twitter4j.Twitter;
+import twitter4j.TwitterException;
 import twitter4j.TwitterFactory;
 import twitter4j.auth.OAuth2Token;
 import twitter4j.conf.ConfigurationBuilder;
@@ -261,6 +264,8 @@ public class BatchSearchRestartable
 
         String fileBase = getBaseFileName(prefix, totalTweets);
 
+        int queryAttempts = 0;
+
         // Now do a simple search to show that the tokens work
         try
         {
@@ -295,12 +300,29 @@ public class BatchSearchRestartable
                 System.out.printf("\n\n!!! Starting loop %d, sinceId = %d, maxId= %d\n\n", queryNumber, tb.sinceID,
                         tb.maxID);
 
+                
                 // Do we need to delay because we've already hit our rate limits?
+                 if (searchTweetsRateLimit == null)
+                {
+                    // Every once in a while, this is null, even though it should get
+                    // set on every iteration.
+                    searchTweetsRateLimit = rateLimitStatus.get("/search/tweets");
+                }
+                
                 if (searchTweetsRateLimit.getRemaining() == 0)
                 {
+                    // Twitter has an annoying habit of sometimes returning negative numbers
+                    // and needing a bit of buffer beyond what they claim is the wait time.
+                    int secondsToWait = 10;
+                    if (searchTweetsRateLimit.getSecondsUntilReset() > 0)
+                    {
+                        secondsToWait = searchTweetsRateLimit.getSecondsUntilReset() + secondsToWait; 
+                    }
+                    
                     // Yes we do, unfortunately ...
                     System.out.printf("!!! Sleeping for %d seconds due to rate limits\n",
-                            searchTweetsRateLimit.getSecondsUntilReset());
+                            secondsToWait);
+
 
                     // If you sleep exactly the number of seconds, you can make your query a bit too
                     // early and still get an error for exceeding rate limitations
@@ -309,7 +331,11 @@ public class BatchSearchRestartable
                     // still triggers a rate limit exception more often than not. I have no idea
                     // why, and I know from a Comp Sci standpoint this is really bad, but just add
                     // in 2 seconds and go about your business. Or else.
-                    Thread.sleep((searchTweetsRateLimit.getSecondsUntilReset() + 2) * 1000l);
+                    // Update from Doyle - I'm trying +10, 2 didn't work for me.
+                    Thread.sleep(secondsToWait * 1000L);  
+                    
+                    System.out.println();
+
                 }
 
                 Query q = new Query(queryString); // Search for tweets that contains this term
@@ -333,7 +359,59 @@ public class BatchSearchRestartable
                 }
 
                 // This actually does the search on Twitter and makes the call across the network
-                QueryResult r = twitter.search(q);
+                QueryResult r = null;
+
+                try {
+                    queryAttempts++;
+
+                    // This actually does the search on Twitter and makes the
+                    // call across the network
+                    r = twitter.search(q);
+                    
+                    // No exception = reset retry counter.
+                    queryAttempts = 0;
+                    
+                } catch (TwitterException e) {
+                    
+                    // Decrement number of successful queries - this one didn't work.
+                    queryNumber--;
+                    
+                    System.out.println("Warning - exception querying Twitter");
+                    
+                    if (e.exceededRateLimitation()) {
+                        // Get that rate limit again?
+                        // searchTweetsRateLimit =
+                        // rateLimitStatus.get("/search/tweets");
+                        searchTweetsRateLimit = e.getRateLimitStatus();
+                        
+                        System.out.println("Rate limit - will sleep and retry query");
+                       
+                    } else if (e.isCausedByNetworkIssue()) {                        
+                        
+                        System.out.println("Network issue, will retry... Exception = " + e.toString());
+                        
+                    }else {
+                    
+                        // Are there other exceptions we could retry? 
+                        throw e;
+                    }
+                }
+
+                
+                if (r == null)
+                {
+                    if (queryAttempts < 5) 
+                    {
+                        // Likely a rate limit retry or a network issue
+                        continue;
+                    }
+                    else {
+                        // Break out of loop and save what info we got.
+                        
+                        System.out.println("Failed after 5 retries, done!");
+                        break;
+                    }
+                }
 
                 // If there are NO tweets in the result set, it is Twitter's way of telling us that
                 // there are no more tweets to be retrieved. Remember that Twitter's search index
@@ -343,6 +421,11 @@ public class BatchSearchRestartable
                 {
                     break; // Nothing? We must be done
                 }
+                
+                // As part of what gets returned from Twitter when we make the search API call, we
+                // get an updated status on rate limits. We save this now so at the top of the loop
+                // we can decide whether we need to sleep or not before making the next call.
+                searchTweetsRateLimit = r.getRateLimitStatus();
 
                 // Loop through returned tweets in this batch to
                 // get the high and low tweetid value (and set our next max)
@@ -397,10 +480,6 @@ public class BatchSearchRestartable
                 // saved boundaries (just in case we crash and need to restart)
                 tb.saveTweetBounds();
 
-                // As part of what gets returned from Twitter when we make the search API call, we
-                // get an updated status on rate limits. We save this now so at the top of the loop
-                // we can decide whether we need to sleep or not before making the next call.
-                searchTweetsRateLimit = r.getRateLimitStatus();
             }
         }
         catch (Exception e)
