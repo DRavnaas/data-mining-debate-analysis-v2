@@ -491,6 +491,7 @@ public class BatchSearchRestartable
             e.printStackTrace();
         }
 
+        System.out.println("\n\nTweet search bounds of " + tb.sinceID + " and " + tb.maxID + " have been saved for this query (see *CachedBounds*.txt)");
         System.out.printf("\n\nA total of %d tweets retrieved\n", totalTweets);
         // That's all, folks!
 

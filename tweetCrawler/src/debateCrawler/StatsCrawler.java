@@ -261,15 +261,18 @@ public class StatsCrawler {
                 q.setResultType(ResultType.recent); // Get all tweets
                 q.setLang("en"); // English language tweets, please
 
+                // These might be GMT dates? = +5 from EST and + 8 from PST
+                //q.setSince(minDate); // >= this date  - we will do this via the twitter timestamps
+
+                
                 q.setSinceId(0L);
                 q.setMaxId(-1);
                 if (maxID != -1) {
                     q.setMaxId(maxID - 1);
+                } else {
+                    // We only need to set this if we aren't using maxid as our boundary
+                    q.setUntil(maxDate); // < this date
                 }
-
-                // These might be GMT dates? = +5 from EST and + 8 from PST
-                q.setSince(minDate); // >= this date
-                q.setUntil(maxDate); // < this date
 
                 QueryResult r = null;
 
@@ -307,6 +310,8 @@ public class StatsCrawler {
                         // TODO: Are there other exceptions we could retry? 
                         // Set done = true, we'll write the file and finish up. 
                         //throw e;
+                        System.out.println("Unexpected exception, will not retry... Exception = " + e.toString());
+
                         done = true;
                     }
                 }
@@ -329,10 +334,6 @@ public class StatsCrawler {
                     }
                 }
 
-                if (r.getTweets().size() == 0) {
-                    break; // Nothing? We must be done
-                }
-
                 // As part of what gets returned from Twitter when we make the
                 // search API call, we
                 // get an updated status on rate limits. We save this now so at
@@ -340,7 +341,16 @@ public class StatsCrawler {
                 // we can decide whether we need to sleep or not before making
                 // the next call.
                 searchTweetsRateLimit = r.getRateLimitStatus();
+                
+                if (r.getTweets().size() == 0) {
+                    System.out.println("(zero tweets found for this batch)");
+                    
+                    // Not sure what to do here?
+                    break;
+                } 
 
+                // Process this batch of tweets....
+                
                 // Loop through returned tweets in this batch to
                 // get the high and low tweetid value (and set our next max)
                 // Stop when we hit our minDate
@@ -376,6 +386,7 @@ public class StatsCrawler {
                         // results)
                         // so keep looping in this batch, but once we are done
                         // don't query twitter for another batch.
+                        System.out.println("Tweet time " + timestamp + " less than minDate " + minDate);
                         done = true;
                     } else {
 
@@ -432,18 +443,8 @@ public class StatsCrawler {
                 // Keep track of how many we've processed.
                 totalTweets = totalTweets + r.getTweets().size();
 
-                // As part of what gets returned from Twitter when we make the
-                // search API call, we
-                // get an updated status on rate limits. We save this now so at
-                // the top of the loop
-                // we can decide whether we need to sleep or not before making
-                // the next call.
-                searchTweetsRateLimit = r.getRateLimitStatus();
-
             } while (!done);
-
-            System.out.println("Date before min date reached, stopping.");
-
+ 
             // write stats to file
 
             SortedSet<String> keys = new TreeSet<String>(countsPerHour.keySet());
