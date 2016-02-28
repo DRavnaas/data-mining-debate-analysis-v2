@@ -163,7 +163,6 @@ public class StatsCrawler {
         // ie: to capture >= 2/25 midnight est, sinceDate needs to be 2/24
         //     to capture < 2/26 11:59pm est, maxDate would need to be 2/27        
         String minDate = "2016-02-24", maxDate = "2016-02-28";
-        //String minDate = "2016-02-25", maxDate = "2016-02-28";
 
         // MaxId is used to go backwards in time from the most recent tweets (on
         // date < maxDate)
@@ -262,6 +261,8 @@ public class StatsCrawler {
                 q.setResultType(ResultType.recent); // Get all tweets
                 q.setLang("en"); // English language tweets, please
 
+                q.setSinceId(0L);
+                q.setMaxId(-1);
                 if (maxID != -1) {
                     q.setMaxId(maxID - 1);
                 }
@@ -453,7 +454,7 @@ public class StatsCrawler {
                 wr = new BufferedWriter(new FileWriter(fileName));
 
                 System.out.println("Writing stats to " + fileName);
-                String firstLine = "Date and hour (UTC = EST + 5), count, minid, maxid";
+                String firstLine = "Date and hour EST (UTC = + 5), count, minid, maxid";
 
                 // Note: this overwrites the file, if the file exists
                 wr.write(firstLine);
