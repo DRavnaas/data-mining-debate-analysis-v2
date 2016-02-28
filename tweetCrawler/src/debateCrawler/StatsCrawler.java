@@ -166,8 +166,13 @@ public class StatsCrawler {
 
         // MaxId is used to go backwards in time from the most recent tweets (on
         // date < maxDate)
-        long maxID = -1;
+        // NOTE: maxId and sinceID will override the dates
+        long maxID = -1, sinceID = 0L;
         long totalTweets = 0;
+        
+        // You can hardcode a since to max range here - these override any dates
+        //sinceID = 702712234468909000L; // over 24 hours before the debate
+        //maxID = 703445853063782400L; // 24 hours after debate 
         
         // Set some parameters about how many tweets we will grab and how far
         // back.
@@ -187,9 +192,15 @@ public class StatsCrawler {
 
         System.out.println("Running stats for query:");
         System.out.println("  Query:                 " + queryString);
-        System.out.println("  Min date (YYYY-MM-DD):              " + minDate);
-        System.out.println("  Max date (YYYY-MM-DD):              " + maxDate);
- 
+
+        System.out.println("  Min id:                             " + sinceID);
+        System.out.println("  Max id:                             " + maxID);
+
+        if ((sinceID == 0L && maxID == -1L))
+        {
+            System.out.println("  Min date (YYYY-MM-DD):              " + minDate);
+            System.out.println("  Max date (YYYY-MM-DD):              " + maxDate);
+        }
 
         Twitter twitter = getTwitter();
 
@@ -265,7 +276,7 @@ public class StatsCrawler {
                 //q.setSince(minDate); // >= this date  - we will do this via the twitter timestamps
 
                 
-                q.setSinceId(0L);
+                q.setSinceId(sinceID);
                 q.setMaxId(-1);
                 if (maxID != -1) {
                     q.setMaxId(maxID - 1);
@@ -374,12 +385,12 @@ public class StatsCrawler {
                     // 1pm in this key format)
                     // I believe this all gets formatted into EST, 5 hours behind UTC
                     // TODO: should we adjust the "since" logic for that?                    
-
+                    // THESE ARE ALL EST Times!
                     SimpleDateFormat keyFormat = new SimpleDateFormat("yyyy-MM-dd HH"); 
                     String hourKey = keyFormat.format(timestamp);
                     String justDate = new SimpleDateFormat("yyyy-MM-dd").format(timestamp);
 
-                    if (justDate.compareTo(minDate) < 0) {
+                    if (sinceID == 0 && (justDate.compareTo(minDate) < 0)) {
                         // We have dipped below our minimum date
                         // We will continue to process tweets in this list
                         // (not sure if they are always sorted by date & time in
@@ -388,7 +399,15 @@ public class StatsCrawler {
                         // don't query twitter for another batch.
                         System.out.println("Tweet time " + timestamp + " less than minDate " + minDate);
                         done = true;
-                    } else {
+                        continue;
+                        
+                    } if (Long.compareUnsigned(sinceID, s.getId()) > 0)
+                    {                        
+                        System.out.println("Tweet id " + s.getId() + " less than sinceID " + sinceID);
+                        done = true;
+                        continue;
+                        
+                    } else {                          
 
                         if (lowTimestampInBatch.after(timestamp)) {
                             lowTimestampInBatch = timestamp;
