@@ -295,8 +295,11 @@ public class BatchSearchRestartable
                     searchTweetsRateLimit.getSecondsUntilReset());
 
             // This is the loop that retrieve multiple blocks of tweets from Twitter
-            for (int queryNumber = 0; queryNumber < MAX_QUERIES; queryNumber++)
+            //for (int queryNumber = 0; queryNumber < MAX_QUERIES; queryNumber++)
+            while (totalTweets < maxTweetsOverall)
             {
+                int queryNumber = 0;
+                
                 System.out.printf("\n\n!!! Starting loop %d, sinceId = %d, maxId= %d\n\n", queryNumber, tb.sinceID,
                         tb.maxID);
 
