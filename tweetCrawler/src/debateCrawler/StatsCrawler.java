@@ -170,18 +170,46 @@ public class StatsCrawler {
         long maxID = -1, sinceID = 0L;
         long totalTweets = 0;
         
+        // working day before the debate
+        //2016-02-25 10   1011    702870674151501000      702885762119966000
+        //2016-02-25 11   1292    702885770839859000      702900863388557000
+        //2016-02-25 12   1231    702900883470753000      702915958973861000
+        //2016-02-25 13   1524    702915965374349000      702931059294539000
+        //2016-02-25 14   1562    702931068744118000      702946161158557000
+        //2016-02-25 15   2035    702946165931778000      702961255812825000
+        //2016-02-25 16   2467    702961262573985000      702976353386291000
+        //2016-02-25 17   2846    702976365746782000      702991459579006000
+        //2016-02-25 18   4390    702991461453860000      703006560469954000
+        //2016-02-25 19   7011    703006561954877000      703021659893080000
+        
+        // Next two hours after debate:
+        //2016-02-25 23   113645  703066958862938000      703082057979838000
+        //2016-02-26 00   41475   703082058395033000      703097157159514000
+        
         // You can hardcode a since to max range here - these override any dates
-        //sinceID = 702712234468909000L; // over 24 hours before the debate
-        //maxID = 703445853063782400L; // 24 hours after debate 
+        
+        sinceID = 702712234468909000L; // over 24 hours before the debate
+        maxID = 703445853063782400L; // 24 hours after debate
+        
+        //sinceID = 703066958862938000L; // end of the debate
+        //maxID = 703097157159514000L;  // two hours after debate
+        
+        // 10am to <8pm, day of the debate
+        //sinceID = 702870674151501000L;
+        //maxID = 703021659893080000L;
+        
+        // 
         
         // Set some parameters about how many tweets we will grab and how far
         // back.
-        if (args.length >= 2) {
-            minDate = args[0];
-            maxDate = args[1];
+        if (args.length >= 1) {
+
+            queryString = args[0];
 
             if (args.length >= 3) {
-                queryString = args[2];
+                
+                minDate = args[1];
+                maxDate = args[2];                       
             }
             
             // this allows starting in the middle of a day
@@ -401,7 +429,7 @@ public class StatsCrawler {
                         done = true;
                         continue;
                         
-                    } if (Long.compareUnsigned(sinceID, s.getId()) > 0)
+                    } else if (Long.compareUnsigned(sinceID, s.getId()) > 0)
                     {                        
                         System.out.println("Tweet id " + s.getId() + " less than sinceID " + sinceID);
                         done = true;
