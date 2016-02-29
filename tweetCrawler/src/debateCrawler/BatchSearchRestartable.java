@@ -56,6 +56,10 @@ import twitter4j.conf.ConfigurationBuilder;
 
 public class BatchSearchRestartable
 {
+    // Feb 25th: "GOPDebate  AND Trump" 5200 0 703021659893080000 TrumpBefore225
+    //           "GOPDebate AND Trump" 5200 703082058395033000 703097157159514000 TrumpAfter225
+    // (replace candidate last name and #maxtweets
+    
     // set via config\twitter4j.properties (see example file)
     private static String consumerKey = "--your key goes here--";
     private static String consumerSecret = "--your secret goes here--";
