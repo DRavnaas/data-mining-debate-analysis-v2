@@ -161,8 +161,11 @@ public class StatsCrawler {
         // NOTE:  You have to go 5 hours ahead to catch a full day (due to GMT to EST conversion)
         // so if you need times past 7pm or before 5am, adjust your dates accordingly
         // ie: to capture >= 2/25 midnight est, sinceDate needs to be 2/24
-        //     to capture < 2/26 11:59pm est, maxDate would need to be 2/27        
-        String minDate = "2016-02-24", maxDate = "2016-02-28";
+        //     to capture < 2/26 11:59pm est, maxDate would need to be 2/27 
+        
+        // Dates for March 3rd debate  - day of debate (= before) and day after (< 3/5)
+        // debate started at 9pm and ended at 11pm ET
+        String minDate = "2016-03-03", maxDate = "2016-03-05";
 
         // MaxId is used to go backwards in time from the most recent tweets (on
         // date < maxDate)
@@ -170,7 +173,7 @@ public class StatsCrawler {
         long maxID = -1, sinceID = 0L;
         long totalTweets = 0;
         
-        // working day before the debate
+        // working day before the debate (Feb)
         //2016-02-25 10   1011    702870674151501000      702885762119966000
         //2016-02-25 11   1292    702885770839859000      702900863388557000
         //2016-02-25 12   1231    702900883470753000      702915958973861000
@@ -188,8 +191,8 @@ public class StatsCrawler {
         
         // You can hardcode a since to max range here - these override any dates
         
-        sinceID = 702712234468909000L; // over 24 hours before the debate
-        maxID = 703445853063782400L; // 24 hours after debate
+        //sinceID = 702712234468909000L; // over 24 hours before the debate
+        //maxID = 703445853063782400L; // 24 hours after debate
         
         //sinceID = 703066958862938000L; // end of the debate
         //maxID = 703097157159514000L;  // two hours after debate
@@ -198,7 +201,11 @@ public class StatsCrawler {
         //sinceID = 702870674151501000L;
         //maxID = 703021659893080000L;
         
-        // 
+        //range to get stats = 3/3 at 0:00 to 3/4 at 6 pm (ish)
+        // since = 705256427263234048, max = 705905661146701825
+        
+        sinceID = 705256427263234048L;
+        maxID = 705905661146701825L;
         
         // Set some parameters about how many tweets we will grab and how far
         // back.
