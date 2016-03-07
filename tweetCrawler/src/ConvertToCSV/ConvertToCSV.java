@@ -6,6 +6,7 @@ import twitter4j.Query.ResultType;
 import twitter4j.conf.ConfigurationBuilder;
 
 import java.io.*;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
@@ -65,18 +66,28 @@ public final class ConvertToCSV {
 	    	    }
 	    	    reader.close();
 	    	    reader = null;
+	    	    
+	    	    writer = new CSVWriter(new FileWriter(targetCSVFile,true));
+    		}
+    		else {
+    			writer = new CSVWriter(new FileWriter(targetCSVFile,true));
+    			String[] headers = {"tweet_id", "name","tweet_created","tweet_location","user_timezone","text"};
+    			writer.writeNext(headers);
     		}
     		
-    		writer = new CSVWriter(new FileWriter(targetCSVFile,true));
     		
+    		
+    		SimpleDateFormat formatter = new SimpleDateFormat("MM/dd/yyyy HH:mm"); 
+
             for (Status status : tweets) {
             	 //if retweet need to be filtered out.
             	 if ((filterOutRetweet)&& status.isRetweet())
             		 continue;
             	 //specify fields to save to CSV
-            	 String[] tweetRecord={"ID"+String.valueOf(status.getId()),
+				String[] tweetRecord={String.valueOf(status.getId()),
             			 				status.getUser().getName(), 
-            			 				status.getCreatedAt().toString(), 
+            			 				formatter.format(status.getCreatedAt()), 
+            			 				status.getUser().getLocation(),
             			 				status.getUser().getTimeZone(),
             			 				status.getText()};
             	 
