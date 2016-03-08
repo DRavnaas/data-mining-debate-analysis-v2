@@ -16,8 +16,8 @@ import com.opencsv.*;
 
 public final class ConvertToCSV {
     public static void main(String[] args) {
-    	if (args.length != 1) {
-    		System.out.println("Usage: ConvertToCSV JSON_source_dir");
+    	if (args.length != 2) {
+    		System.out.println("Usage: ConvertToCSV JSON_source_dir output_csv");
     		System.exit(-1);
     	}
     	try {
@@ -29,8 +29,9 @@ public final class ConvertToCSV {
              });
              for (File file : files) {
             	 List<Status> restoredTweets = readLines(file);
-            	 saveToCSV(restoredTweets, file.getName().replace(".json", ".csv"), false);
-                 System.out.println("saved " + file.getName() +" to " + file.getName().replace(".json", ".csv"));
+            	 String candidate = getCandidateFromFileName(file.getName());
+            	 saveToCSV(restoredTweets, args[1], candidate, false);
+                 System.out.println("saved " + file.getName() +" to " + args[1]);
              }
              System.exit(0);
          } catch (Exception e) {
@@ -40,8 +41,15 @@ public final class ConvertToCSV {
          }
  
  }
+    public static String  getCandidateFromFileName(String fileName) {
+    	if (fileName.indexOf("Before")!=-1)
+    		return fileName.substring(0, fileName.indexOf("Before"));
+    	else if (fileName.indexOf("After")!=-1)
+    		return fileName.substring(0, fileName.indexOf("After"));
+    	else return "no candidate found";
+    }
 
-    public static void saveToCSV(List<Status> tweets, String targetCSV, boolean filterOutRetweet) throws Exception{
+    public static void saveToCSV(List<Status> tweets, String targetCSV, String candidate, boolean filterOutRetweet) throws Exception{
     	CSVWriter writer = null;
     	CSVReader reader = null;
     	try {
@@ -50,7 +58,7 @@ public final class ConvertToCSV {
 
     		if (targetCSV.endsWith(".csv") || targetCSV.endsWith(".CSV"))
     			targetCSV = targetCSV.substring(0, targetCSV.length()-4);
-    		File targetCSVFile = new File("savedTweets/"+targetCSV+".csv");
+    		File targetCSVFile = new File(targetCSV+".csv");
     		
 
     		Hashtable<String, String[]> lookupTable = new Hashtable<String, String[]>();
@@ -71,7 +79,7 @@ public final class ConvertToCSV {
     		}
     		else {
     			writer = new CSVWriter(new FileWriter(targetCSVFile,true));
-    			String[] headers = {"tweet_id", "name","tweet_created","tweet_location","user_timezone","text"};
+    			String[] headers = {"tweet_id","candiate", "name","tweet_created","tweet_location","user_timezone","retweet_count","text"};
     			writer.writeNext(headers);
     		}
     		
@@ -85,10 +93,12 @@ public final class ConvertToCSV {
             		 continue;
             	 //specify fields to save to CSV
 				String[] tweetRecord={String.valueOf(status.getId()),
+										candidate,
             			 				status.getUser().getName(), 
             			 				formatter.format(status.getCreatedAt()), 
             			 				status.getUser().getLocation(),
             			 				status.getUser().getTimeZone(),
+            			 				String.valueOf(status.getRetweetCount()),
             			 				status.getText()};
             	 
             	 if (lookupTable.get(tweetRecord[0])== null) {
