@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.util.List;
 
 import twitter4j.QueryResult;
 import twitter4j.Status;
@@ -32,7 +33,7 @@ public class SaveTweets
     // Result: query result to be store at this time.
     // apendToFile: true if the input tweets should be appended to the input file contents.
     // false if hte input tweets should be written to the file, overwriting any existing contents.
-    public static void storeQueryResult(String targetFile, QueryResult Result, boolean appendToFile) throws Exception
+    public static void storeQueryResult(String targetFile, List<Status> tweets, String header, boolean appendToFile) throws Exception
     {
         FileOutputStream fos = null;
         OutputStreamWriter osw = null;
@@ -41,10 +42,10 @@ public class SaveTweets
 
         if (!appendToFile)
         {
-            System.out.println("Writing " + Result.getTweets().size() + " tweets to file: " + targetFile);
+            System.out.println("Writing " + tweets.size() + " tweets to file: " + targetFile);
         } else
         {
-            System.out.println("Appending " + Result.getTweets().size() + " tweets to file: " + targetFile);
+            System.out.println("Appending " + tweets.size() + " tweets to file: " + targetFile);
 
         }
 
@@ -54,13 +55,13 @@ public class SaveTweets
             fos = new FileOutputStream(targetFile, appendToFile);
             osw = new OutputStreamWriter(fos, "UTF-8");
             bw = new BufferedWriter(osw);
-            for (Status status : Result.getTweets())
+            for (Status status : tweets)
             {
 
                 if ((firstWrite) && (!appendToFile))
                 {
                     // Start a new file = write a header, removing any existing contents.
-                    bw.write(Result.getQuery());
+                    bw.write(header);
                     bw.newLine();
                     firstWrite = false;
                 }

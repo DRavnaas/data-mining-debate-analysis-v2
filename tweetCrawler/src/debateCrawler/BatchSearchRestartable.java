@@ -5,7 +5,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -16,13 +19,17 @@ import java.util.Properties;
 //  since id = 0, max id = 703380244661538816
 //  Output folder TrumpFolder, output file prefix = TrumpFile (TrumpFolder must exist)
 
-//  "GOPDebate AND Trump" 230 TrumpDebate 
+//  "GOPDebate AND Trump" 230 TrumpDebate Trump 
 //  Query = GOPDebate AND Trump
 //  max # tweets to store = 230
 //  since id and max id will be either the previously cached values in TrumpDebate_CachedBounds*.txt
 //    OR if that file doesn't exist, then they are set to 0 and -1 (= most recent tweets)
 //  since id = 0, max id = -1 (= start at most recent tweets)
 //  Output file prefix = TrumpDebate (in current dir)
+//  Tweets will be filtered to ensure the text contains Trump (the last parameter)
+
+
+
 
 
 
@@ -82,7 +89,16 @@ public class BatchSearchRestartable
     private static String queryString = "GOPDebate AND Trump";
 
     private static int maxTweetsOverall = TWEETS_PER_QUERY * MAX_QUERIES;
-
+    
+    // We will ignore tweets from user ids that have a candidate name in them, or "news" in them
+    private static List<String> ignoreTweetBasedOnUserIds = new ArrayList<String>(Arrays.asList("trump", "cruz", "rubio", "hillary", "bernie", "carson", "kasich", "news"));
+    private static List<String> ignoredIds = new ArrayList<String>();
+    private static long ignoredCountDueToId = 0L;
+    private static long ignoredCountDueToText = 0L;
+    
+    // Optional tag that requires a certain string in the text.  Typically a candidate name.
+    private static String textMustContain = null;
+    
     private static String getBaseFileName(String prefix, int tweetCount)
     {
 
@@ -189,7 +205,7 @@ public class BatchSearchRestartable
         TweetBounds tb = null;
         String prefix = "";
 
-        // args: [query [maxtweets [sinceid maxid] candidateName]]
+        // args: [query [maxtweets [sinceid maxid] folder\filePrefix [candidateName]]
         if (args.length >= 1)
         {
             queryString = args[0];
@@ -210,23 +226,26 @@ public class BatchSearchRestartable
                 MAX_QUERIES++;
             }
 
-            // Candidate name (= file prefix) can be 3rd parameter or 5th
-            int candidateNameArg = 0;
-            if (args.length == 5)
+            // File prefix can be 3rd parameter or 5th (if since and max specified)
+            int prefixArg = 0;
+            if (args.length >= 5)
             {
-                candidateNameArg = 4;
+                prefixArg = 4;
+            } else 
+            {
+                prefixArg = 2;
             }
-            if (args.length == 3)
+            if (prefixArg != 0)
             {
-                candidateNameArg = 2;
-            }
-            if (candidateNameArg != 0)
-            {
-                prefix = args[candidateNameArg];
+                prefix = args[prefixArg];
+                if (prefixArg+1 < args.length) 
+                {
+                    textMustContain = args[prefixArg+1].toLowerCase();                   
+                }
             }
 
             // If since and max are on the command line, use those
-            if (args.length >= 4)
+            if (prefixArg >= 4)
             {
                 tb = new TweetBounds(Long.parseLong(args[2]), Long.parseLong(args[3]), queryString, prefix);
 
@@ -248,6 +267,14 @@ public class BatchSearchRestartable
         System.out.println("  Starting tweet id:     " + tb.sinceID);
         System.out.println("  Max tweet id:          " + tb.maxID);
         System.out.println("  Output file prefix:    " + prefix);
+        if (textMustContain != null)
+        {
+            System.out.println("  Mandatory term in tweet text (otherwise tweet discarded):    " + textMustContain);
+            
+        }
+
+        System.out.println("  Ignoring tweets from user ids containing: " + ignoreTweetBasedOnUserIds);
+
         System.out.println();
 
         // We're curious how many tweets, in total, we've retrieved. Note that TWEETS_PER_QUERY is
@@ -300,10 +327,10 @@ public class BatchSearchRestartable
 
             // This is the loop that retrieve multiple blocks of tweets from Twitter
             //for (int queryNumber = 0; queryNumber < MAX_QUERIES; queryNumber++)
+            int queryNumber = 0;
+
             while (totalTweets < maxTweetsOverall)
-            {
-                int queryNumber = 0;
-                
+            {                
                 System.out.printf("\n\n!!! Starting loop %d, sinceId = %d, maxId= %d\n\n", queryNumber, tb.sinceID,
                         tb.maxID);
 
@@ -349,6 +376,8 @@ public class BatchSearchRestartable
                 q.setCount(TWEETS_PER_QUERY); // How many tweets, max, to retrieve
                 q.setResultType(ResultType.recent); // Get all tweets
                 q.setLang("en"); // English language tweets, please
+                q.setSinceId(0);
+                q.setMaxId(-1);
 
                 // If maxID is -1, then this is our first call and we do not want to tell Twitter
                 // what the maximum tweet id is we want to retrieve. But if it is not -1, then it
@@ -377,6 +406,7 @@ public class BatchSearchRestartable
                     
                     // No exception = reset retry counter.
                     queryAttempts = 0;
+                    queryNumber++;
                     
                 } catch (TwitterException e) {
                     
@@ -439,6 +469,7 @@ public class BatchSearchRestartable
 
                 long lowestIdInBatch = -1; // these are compared as unsigned longs, so -1 is max.
                 long highestIdInBatch = 0;
+                List<Status> filteredList = new ArrayList<Status>();
                 for (Status s : r.getTweets()) // Loop through all the tweets...
                 {
                     // Keep track of the lowest tweet ID. If you do not do this, you cannot retrieve
@@ -448,7 +479,8 @@ public class BatchSearchRestartable
                         // this is our max id for the next batch = lower than
                         // any in this batch since we are going back in time.
                         tb.maxID = s.getId();
-                    }
+                    }                   
+                    
 
                     if (Long.compareUnsigned(highestIdInBatch, s.getId()) < 0)
                     {
@@ -459,10 +491,41 @@ public class BatchSearchRestartable
                     {
                         lowestIdInBatch = s.getId();
                     }
+                    
+                    boolean ignore = false;
+                    
+                    // Skip tweets that look like they are from candidates or news                    
+                    String lowerUserId = s.getUser().getName().toLowerCase();
+                    if (ignoreTweetBasedOnUserIds.contains(lowerUserId))
+                    {
+                        if (!ignoredIds.contains(lowerUserId))
+                        {
+                            ignoredIds.add(lowerUserId);
+                        }
+                        
+                        ignore = true;
+                        ignoredCountDueToId++;
+                    }
+                    
+                    // If we have a "must contain" argument specified, check
+                    // that the text contains it.
+                    if (textMustContain != null && !textMustContain.isEmpty())
+                    {
+                        if(!s.getText().toLowerCase().contains(textMustContain))
+                        {
+                            ignore = true;
+                            ignoredCountDueToText++;
+                        }
+                    }
+                    
+                    if (!ignore) {
+                        filteredList.add(s);
+                    }
                 }
 
                 // Now store our batch of tweets
                 System.out.println("  Batch tweet ids range = " + lowestIdInBatch + " to " + highestIdInBatch);
+                System.out.println("  Number of ignored tweets = " + (r.getTweets().size() - filteredList.size()));
 
                 if ((currentBatchSaved == 0) || (currentBatchSaved >= BATCH_STORE_THRESHOLD))
                 {
@@ -471,17 +534,17 @@ public class BatchSearchRestartable
                     currentBatchSaved = 0;
 
                     // Overwrite any current file, do not append.
-                    SaveTweets.storeQueryResult(fileBase, r, false);
+                    SaveTweets.storeQueryResult(fileBase, filteredList, r.getQuery(), false);
 
                 } else
                 {
                     // Append to current file for this batch.
-                    SaveTweets.storeQueryResult(fileBase, r, true);
+                    SaveTweets.storeQueryResult(fileBase, filteredList, r.getQuery(), true);
                 }
 
                 // Keep track of how many we've processed.
-                totalTweets = totalTweets + r.getTweets().size();
-                currentBatchSaved = currentBatchSaved + r.getTweets().size();
+                totalTweets = totalTweets + filteredList.size();
+                currentBatchSaved = currentBatchSaved + filteredList.size();
 
                 // Once we have successfully stored our tweets, update our
                 // saved boundaries (just in case we crash and need to restart)
@@ -491,16 +554,22 @@ public class BatchSearchRestartable
         }
         catch (Exception e)
         {
-            // Catch all -- you're going to read the stack trace and figure out what needs to be
-            // done to fix it
-            System.out.println("That didn't work well...wonder why?");
+
+            System.out.println("Exception occured - terminating crawl unexpectedly!");
 
             e.printStackTrace();
         }
 
+
         System.out.println("\n\nTweet search bounds of " + tb.sinceID + " and " + tb.maxID + " have been saved for this query (see *CachedBounds*.txt)");
-        System.out.printf("\n\nA total of %d tweets retrieved\n", totalTweets);
-        // That's all, folks!
+        System.out.printf("\n\nA total of %d tweets stored\n", totalTweets);
+        System.out.printf("\n\nNumber tweets ignored due to user id: %d", ignoredCountDueToId);
+        if (ignoredIds.size() != 0)
+        {
+            System.out.printf("\n  User ids ignored: " + ignoredIds);
+        }
+        System.out.printf("\n\nNumber tweets ignored due to no hit on specified mandatory text: %d", ignoredCountDueToText);
+        
 
     }
 }
