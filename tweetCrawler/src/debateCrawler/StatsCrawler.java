@@ -165,7 +165,7 @@ public class StatsCrawler {
         
         // Dates for March 3rd debate  - day of debate (= before) and day after (< 3/5)
         // debate started at 9pm and ended at 11pm ET
-        String minDate = "2016-03-03", maxDate = "2016-03-05";
+        String minDate = "2016-03-10", maxDate = "2016-03-12";
 
         // MaxId is used to go backwards in time from the most recent tweets (on
         // date < maxDate)
@@ -204,8 +204,8 @@ public class StatsCrawler {
         //range to get stats = 3/3 at 0:00 to 3/4 at 6 pm (ish)
         // since = 705256427263234048, max = 705905661146701825
         
-        sinceID = 705256427263234048L;
-        maxID = 705905661146701825L;
+        //sinceID = 705256427263234048L;
+        //maxID = 705905661146701825L;
         
         // Set some parameters about how many tweets we will grab and how far
         // back.
