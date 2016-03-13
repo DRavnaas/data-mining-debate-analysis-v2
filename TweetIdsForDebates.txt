@@ -92,3 +92,30 @@ After -
 	"GOPDebate  AND Rubio" 2386 0 705573474673283000 RubioBefore303
 	"GOPDebate  AND Rubio" 2386 705618773441531000 705633872726216000  RubioAfter303
 	"GOPDebate AND Rubio" 2386 705573474673283000 705618773441531000  RubioDuring303
+
+March 10th:
+Debate started at 9 and ended at 11
+
+Tweet stats:			
+	count	%	x 13k
+Trump	211331	0.52771535	6860.299553
+Kasich	37531	0.093718786	1218.344221
+Cruz	82598	0.206255743	2681.324663
+Rubio	69004	0.17231012	2240.031563
+			
+sum:	400464	1	13000
+
+
+
+Before - 
+	set max id to 3-10 20:xx max value = 708110189451419000
+
+
+During - since id = 708110189451419000
+         max id =   708140389690155000
+
+
+After - 
+	set since id to 708140389690155000
+	set max id to 708155487775100000
+	(= first hour after debate)
