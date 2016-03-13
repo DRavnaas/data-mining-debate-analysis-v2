@@ -20,6 +20,7 @@ public class TweetBounds
     protected int queryId;
     protected String query;
 
+    
     // The prefix lets us identify the file easier
     protected String prefix;
 
@@ -30,6 +31,7 @@ public class TweetBounds
         this.query = "";
         this.queryId = 0;
         this.prefix = "";
+
     }
 
     public TweetBounds(String query)
@@ -39,6 +41,7 @@ public class TweetBounds
         this.query = query;
         this.queryId = query.hashCode();
         this.prefix = "";
+
     }
 
     public TweetBounds(String query, String prefix)
@@ -54,6 +57,7 @@ public class TweetBounds
         {
             this.prefix = prefix + "_";
         }
+
     }
 
     public TweetBounds(long since, long max, String query, String prefix)
@@ -62,6 +66,7 @@ public class TweetBounds
         this.maxID = max;
         this.query = query;
         this.queryId = query.hashCode();
+
 
         if (prefix == null || prefix.isEmpty())
         {
@@ -126,6 +131,11 @@ public class TweetBounds
 
     public void saveTweetBounds() throws IOException
     {
+        saveTweetBounds(null);
+    }
+    
+    public void saveTweetBounds(String debugInfo) throws IOException
+    {
         String filename = getFileName();
 
         BufferedWriter wr = null;
@@ -141,6 +151,12 @@ public class TweetBounds
             // We write the query for debugging - not used on init.
             wr.newLine();
             wr.write(this.query);
+            
+            if (debugInfo != null && !debugInfo.isEmpty())
+            {
+                wr.newLine();
+                wr.write(debugInfo);
+            }
 
         }
         catch (FileNotFoundException ex)

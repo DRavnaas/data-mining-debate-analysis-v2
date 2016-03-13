@@ -495,21 +495,28 @@ public class BatchSearchRestartable
                     boolean ignore = false;
                     
                     // Skip tweets that look like they are from candidates or news                    
-                    String lowerUserId = s.getUser().getName().toLowerCase();
-                    if (ignoreTweetBasedOnUserIds.contains(lowerUserId))
+                    String lowerUserId = s.getUser().getScreenName().toLowerCase();
+                    
+                    for (String ignoreWithSubString : ignoreTweetBasedOnUserIds)
                     {
-                        if (!ignoredIds.contains(lowerUserId))
+                        // If we find our candidate last names or "news" in the user id...
+                        if (lowerUserId.indexOf(ignoreWithSubString) != -1)
                         {
-                            ignoredIds.add(lowerUserId);
+                            ignore = true;
+                            if (!ignoredIds.contains(lowerUserId))
+                            {
+                                ignoredIds.add(lowerUserId);
+                            }                            
+
+                            ignoredCountDueToId++;
+                            break;
                         }
-                        
-                        ignore = true;
-                        ignoredCountDueToId++;
                     }
+ 
                     
                     // If we have a "must contain" argument specified, check
                     // that the text contains it.
-                    if (textMustContain != null && !textMustContain.isEmpty())
+                    if (ignore == false && textMustContain != null && !textMustContain.isEmpty())
                     {
                         if(!s.getText().toLowerCase().contains(textMustContain))
                         {
@@ -548,8 +555,9 @@ public class BatchSearchRestartable
 
                 // Once we have successfully stored our tweets, update our
                 // saved boundaries (just in case we crash and need to restart)
-                tb.saveTweetBounds();
-
+                // (We save some debug info too, but this isn't used for next run)
+                tb.saveTweetBounds("Tweets stored: " + totalTweets + ", requested min = " + maxTweetsOverall 
+                        + "; ignored user ids: " + ignoredIds.toString());
             }
         }
         catch (Exception e)
@@ -562,7 +570,9 @@ public class BatchSearchRestartable
 
 
         System.out.println("\n\nTweet search bounds of " + tb.sinceID + " and " + tb.maxID + " have been saved for this query (see *CachedBounds*.txt)");
-        System.out.printf("\n\nA total of %d tweets stored\n", totalTweets);
+        System.out.printf("\n\nNumber tweets requested = %d", maxTweetsOverall);
+
+        System.out.printf("\n\nA total of %d tweets stored", totalTweets);
         System.out.printf("\n\nNumber tweets ignored due to user id: %d", ignoredCountDueToId);
         if (ignoredIds.size() != 0)
         {
