@@ -27,9 +27,9 @@ import com.opencsv.bean.HeaderColumnNameMappingStrategy;
 public class FilterTweets {
 	
 	//SPECIFY THE INPUT FILE DIRECTORY HERE....
-	static String dataDirectoryPath = "data";
+	static String dataDirectoryPath = "data/test";
 	// SPECIFY THE OUTPUT FILE DIRECTORY HERE....
-	static String filteredDirectoryPath = "filtered";
+	static String filteredDirectoryPath = "filtered/march";
 
 	static int BATCH_SIZE = 1000;
 	// Maps to save the regex 
