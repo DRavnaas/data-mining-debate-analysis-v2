@@ -1,0 +1,13 @@
+
+create a collection, then create a core for it
+
+http://localhost:8983/solr/admin/collections?action=CREATE&name=newCollection&numShards=2&replicationFactor=1&collection.configName=gopdebate
+
+
+http://localhost:8983/solr/admin/collections?action=DELETE&name=newCollection
+
+
+http://localhost:8983/solr/admin/collections?action=RELOAD&name=newCollection
+http://localhost:8983/solr/admin/collections?action=LIST&wt=json
+
+http://localhost:8983/solr/admin/cores?action=CREATE&name=coreX&collection=gopdebate&instanceDir=path/to/dir&config=config_file_name.xml&schema=schem_file_name.xml&dataDir=data
