@@ -20,7 +20,7 @@ public class IngestCsv {
     // First row must be a header row.
 
     // ToDo: get this from config instead?
-    public static String solrUrlBase = "http://192.168.252.98:7574/solr/"; // "http://localhost:8983/solr/";
+    public static String solrUrlBase = "http://localhost:8983/solr/";
 
     public static String collectionName = "gopdebate";
     public static String solrIngestBase = solrUrlBase + collectionName;
@@ -62,6 +62,12 @@ public class IngestCsv {
                 throw new Exception("Could not read header line from csv");
             } else {
                 System.out.println("Ingesting " + args[0]);
+            }
+            
+            if (headerFields[0].startsWith("﻿"))
+            {
+            	// I think these are byte markers for UTF-8?  Strip them off.
+            	headerFields[0] = headerFields[0].substring(3);
             }
 
             String[] fields = null;

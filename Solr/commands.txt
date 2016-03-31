@@ -1,16 +1,41 @@
 
-create a collection, then create a core for it
+upload config (can upload to getting started or dummy collection)
 
-http://localhost:8983/solr/admin/collections?action=CREATE&name=newCollection&numShards=2&replicationFactor=1&collection.configName=gopdebate
+create a collection
 
-http://localhost:8983/solr/admin/collections?action=CREATE&name=marchdebatebefore&numShards=2&replicationFactor=1&collection.configName=gopdebate
+check schema looks right
+
+then ingest
+
+create a collection:
+
+format = http://localhost:8983/solr/admin/collections?action=CREATE&name=newCollection&numShards=2&replicationFactor=1&collection.configName=gopdebate
+
+	http://localhost:8983/solr/admin/collections?action=CREATE&name=augdebate&numShards=1&replicationFactor=1&collection.configName=gopdebate
+
+	http://localhost:8983/solr/admin/collections?action=CREATE&name=marchdebatebefore&numShards=1&replicationFactor=1&collection.configName=gopdebate
+
+	http://localhost:8983/solr/admin/collections?action=CREATE&name=marchdebateafter&numShards=1&replicationFactor=1&collection.configName=gopdebate
 
 
+(if you mess up - delete it)
 
-http://localhost:8983/solr/admin/collections?action=DELETE&name=newCollection
+	http://localhost:8983/solr/admin/collections?action=DELETE&name=newCollection
 
 
-http://localhost:8983/solr/admin/collections?action=RELOAD&name=newCollection
-http://localhost:8983/solr/admin/collections?action=LIST&wt=json
+	http://localhost:8983/solr/admin/collections?action=RELOAD&name=newCollection
+	http://localhost:8983/solr/admin/collections?action=LIST&wt=json
 
-http://localhost:8983/solr/admin/cores?action=CREATE&name=coreX&collection=gopdebate&instanceDir=path/to/dir&config=config_file_name.xml&schema=schem_file_name.xml&dataDir=data
+
+Then ingest:
+
+csv must have id and tweet_text field
+
+ingest into augdebate:
+C:\Users\doylerav\OneDrive\CS6220\project\SentimentForSolr.csv
+
+ingest marchdebatebefore:
+C:\Users\doylerav\OneDrive\CS6220\project\March10thV4\AggregatedFiltered\March10thV4_after_aggregated_filtered.csv
+
+marchdebateafter:
+C:\Users\doylerav\OneDrive\CS6220\project\March10thV4\AggregatedFiltered\March10thV4_before_aggregated_filtered
