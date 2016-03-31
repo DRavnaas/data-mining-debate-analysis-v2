@@ -3,6 +3,9 @@ create a collection, then create a core for it
 
 http://localhost:8983/solr/admin/collections?action=CREATE&name=newCollection&numShards=2&replicationFactor=1&collection.configName=gopdebate
 
+http://localhost:8983/solr/admin/collections?action=CREATE&name=marchdebatebefore&numShards=2&replicationFactor=1&collection.configName=gopdebate
+
+
 
 http://localhost:8983/solr/admin/collections?action=DELETE&name=newCollection
 
