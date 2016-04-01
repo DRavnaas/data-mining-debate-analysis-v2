@@ -1,0 +1,4 @@
+word_list,config/AugTerms.txt
+input_csv,config/gopFirstDebate.csv
+output_csv,august_feature_matrix.csv
+mapping_file,config/AugMapping.txt

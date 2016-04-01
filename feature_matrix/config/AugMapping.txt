@@ -1,0 +1,22 @@
+tgt_col, src_col
+id,id
+candidate,candidate
+candidate_confidence,candidate_confidence
+relevant_yn,relevant_yn
+relevant_yn_confidence,relevant_yn_confidence
+sentiment,sentiment
+sentiment_confidence,sentiment_confidence
+subject_matter,subject_matter
+subject_matter_confidence,subject_matter_confidence
+candidate_gold,candidate_gold
+name,name
+relevant_yn_gold,relevant_yn_gold
+retweet_count,retweet_count
+sentiment_gold,sentiment_gold
+subject_matter_gold,subject_matter_gold
+text,text,text
+tweet_coord,tweet_coord
+tweet_created,tweet_created
+tweet_id,tweet_id
+tweet_location,tweet_location
+user_timezone,user_timezone
