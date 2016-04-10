@@ -1,0 +1,2 @@
+
+http://localhost:8983/solr/marchdebatebefore/admin/luke?wt=json&fl=tweet_lower&numTerms=20000
