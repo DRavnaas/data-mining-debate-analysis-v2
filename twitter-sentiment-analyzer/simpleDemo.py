@@ -66,6 +66,16 @@ def getFeatureVector(tweet, stopWords):
     return featureVector    
 #end
 
+def extract_features(words):
+    return dict([(word, True) for word in words])
+
+#extract feature with bigram
+#def word_feats(words, score_fn=BigramAssocMeasures.pmi, n=5):
+    #bigram_finder = BigramCollocationFinder.from_words(words)
+    #bigrams = bigram_finder.nbest(score_fn, n)
+    #return dict([(ngram, True) for ngram in itertools.chain(words, bigrams)])
+
+
 #start extract_features
 # def extract_features(tweet):
 #     tweet_words = set(tweet)
@@ -79,8 +89,8 @@ def getFeatureVector(tweet, stopWords):
 #Read the tweets one by one and process it
 #inpTweets = csv.reader(open('data/augustW.csv', 'rb'), delimiter=',', quotechar='|')
 
-trainTweets = csv.reader(open('data/gop/august/august_full_form.csv', 'rU'))
-testTweets = csv.reader(open('data/gop/march/before_sample_form.csv', 'rU'))
+trainTweets = csv.reader(open('data/gop/august_full_train_form.csv', 'rU'))
+#testTweets = csv.reader(open('data/gop/march/before_sample_form.csv', 'rU'))
 
 
 stopWords = getStopWordList('data/feature_list/stopwords.txt')
@@ -93,19 +103,20 @@ for row in trainTweets:
     processedTweet = processTweet(tweet)
     featureVector = getFeatureVector(processedTweet, stopWords)
     featureList.extend(featureVector)
-    tweets.append((featureVector, sentiment));
+    tweets.append((extract_features(featureVector), sentiment));
 #end loop
 
 # Remove featureList duplicates
 featureList = list(set(featureList))
 
 # Generate the training set
-training_set = nltk.classify.util.apply_features(extract_features, tweets)
+#training_set = nltk.classify.util.apply_features(extract_features, tweets)
 
 # Train the Naive Bayes classifier
-NBClassifier = nltk.NaiveBayesClassifier.train(training_set)
+NBClassifier = nltk.NaiveBayesClassifier.train(tweets)
+#NBClassifier = nltk.NaiveBayesClassifier.train(training_set)
 
-
+testTweets = csv.reader(open('data/gop/august_full_test_form.csv', 'rU'))
 correct = 0
 total =0
 for row in testTweets:
