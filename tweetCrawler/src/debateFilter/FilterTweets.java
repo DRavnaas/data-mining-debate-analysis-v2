@@ -27,7 +27,7 @@ import com.opencsv.bean.HeaderColumnNameMappingStrategy;
 public class FilterTweets {
 	
 	//SPECIFY THE INPUT FILE DIRECTORY HERE....
-	static String dataDirectoryPath = "data/test";
+	static String dataDirectoryPath = "data/march";
 	// SPECIFY THE OUTPUT FILE DIRECTORY HERE....
 	static String filteredDirectoryPath = "filtered/march";
 
@@ -151,6 +151,37 @@ public class FilterTweets {
 		List<Tweet> tweetList = csvToBean.parse(strategy,reader);
 		return tweetList;		
 	}
+	
+//	private static List<Tweet> readCSV(String filename) throws IOException {
+//	     CSVReader reader = new CSVReader(new FileReader(filename));
+//	     String [] nextline;
+//	     List<Tweet> tweetList = new ArrayList<Tweet>();
+//	     
+//	     while( (nextline = reader.readNext()) != null){
+//	    	 Tweet tweet = new Tweet();    	 
+//	    	 try {
+//	    		 tweet.setTweet_id(nextline[0]);
+//		    	 tweet.setCandidate(nextline[1]);
+//		    	 tweet.setName(nextline[2]);
+//		    	 tweet.setTweet_created(nextline[3]);
+//		    	 tweet.setTweet_location(nextline[4]);
+//		    	 tweet.setUser_timezone(nextline[5]);
+//		    	 tweet.setRetweet_count(nextline[6]);
+//		    	 tweet.setText(nextline[7]);
+//	    	 }
+//	    	 catch(Exception e) {
+//	    		 System.out.println("Exception : " + nextline[0]);
+//	    		 e.printStackTrace();
+//	    	 }
+//	    	
+//	    	 
+//	    	 tweetList.add(tweet);
+//	    	 
+//	    }
+//	     reader.close();
+//	return tweetList;		
+//}
+
 	
 	// Initializes the output file
 	private static void initCSVFile(String filename) throws IOException {		   		

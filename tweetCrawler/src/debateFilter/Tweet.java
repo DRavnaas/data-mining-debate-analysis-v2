@@ -59,6 +59,38 @@ public class Tweet {
 	public String getText() {
 		return text;
 	}
+
+	public void setTweet_id(String tweet_id) {
+		this.tweet_id = tweet_id;
+	}
+
+	public void setCandidate(String candidate) {
+		this.candidate = candidate;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public void setTweet_created(String tweet_created) {
+		this.tweet_created = tweet_created;
+	}
+
+	public void setTweet_location(String tweet_location) {
+		this.tweet_location = tweet_location;
+	}
+
+	public void setUser_timezone(String user_timezone) {
+		this.user_timezone = user_timezone;
+	}
+
+	public void setRetweet_count(String retweet_count) {
+		this.retweet_count = retweet_count;
+	}
+
+	public void setText(String text) {
+		this.text = text;
+	}
 	
 	
 }
