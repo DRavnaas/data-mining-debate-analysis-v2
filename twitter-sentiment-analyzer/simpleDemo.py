@@ -67,25 +67,27 @@ def getFeatureVector(tweet, stopWords):
 #end
 
 #start extract_features
-def extract_features(tweet):
-    tweet_words = set(tweet)
-    features = {}
-    for word in featureList:
-        features['contains(%s)' % word] = (word in tweet_words)
-    return features
-#end
+# def extract_features(tweet):
+#     tweet_words = set(tweet)
+#     features = {}
+#     for word in featureList:
+#         features['contains(%s)' % word] = (word in tweet_words)
+#     return features
+# #end
 
 
 #Read the tweets one by one and process it
 #inpTweets = csv.reader(open('data/augustW.csv', 'rb'), delimiter=',', quotechar='|')
 
-inpTweets = csv.reader(open('data/gop/august_full_train_form.csv', 'rU'))
+trainTweets = csv.reader(open('data/gop/august/august_full_form.csv', 'rU'))
+testTweets = csv.reader(open('data/gop/march/before_sample_form.csv', 'rU'))
+
 
 stopWords = getStopWordList('data/feature_list/stopwords.txt')
 count = 0;
 featureList = []
 tweets = []
-for row in inpTweets:
+for row in trainTweets:
     sentiment = row[0]
     tweet = row[1]
     processedTweet = processTweet(tweet)
@@ -103,7 +105,6 @@ training_set = nltk.classify.util.apply_features(extract_features, tweets)
 # Train the Naive Bayes classifier
 NBClassifier = nltk.NaiveBayesClassifier.train(training_set)
 
-testTweets = csv.reader(open('data/gop/august_full_test_form.csv', 'rU'))
 
 correct = 0
 total =0

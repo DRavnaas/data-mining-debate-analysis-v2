@@ -3,8 +3,11 @@ import re
 
 records = []
 num = 0
-reader = csv.reader(open('data/gop/august_full_test.csv', 'rU'))
-ofile = open('data/gop/august_full_test_form.csv',"wb+")
+
+reader = csv.reader(open('data/gop/august/august_full.csv', 'rU'))
+ofile = open('data/gop/august/august_full_form.csv',"wb+")
+#reader = csv.reader(open('data/gop/march/before_sample.csv', 'rU'))
+#ofile = open('data/gop/march/before_sample_form.csv',"wb+")
 writer = csv.writer(ofile,delimiter=',')
 
 for record in reader:
