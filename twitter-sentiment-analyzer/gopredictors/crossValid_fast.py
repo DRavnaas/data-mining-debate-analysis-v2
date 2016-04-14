@@ -68,9 +68,23 @@ def removeStopWords(words):
 #cross validation function, it takes a function "algo" as parameter,
 #then call "algo" to run NB, anything can be defined in "algo"
 def cross_validation(dataSet, algo):
+    total=0
+    correct=0
+
     for i in range(0,5):
         trainSet, testSet = devideFullSet(dataSet,i)
-        algo(trainSet, testSet)
+
+        print "\n Fold %d" % (i+1)
+        total_fold,correct_fold = algo(trainSet, testSet)
+
+        total = total + total_fold
+        correct = correct + correct_fold
+
+    accuracy =  (correct / float(total)) * 100
+
+    print "-------------------------------------------"
+    print "Average Accuracy : %.2f" % accuracy
+    print  "(" + str(correct) + "/" + str(total) + ")"
 
 #divide a full dataset into train and test for 5-fold cross validation
 #its input must be list, and a train data list and a test data list will be returned
@@ -99,41 +113,52 @@ def tokenize(tweet):
     return featureVector
 
 
-def preprocess(data):
+def preprocess(data,removeStopWordsFlag):
     cleanTweets = []
     for row in data:
         sentiment = row[1]
         tweet = row[2]
         processedTweet = processTweet(tweet)
         tokenizedTweet = tokenize(processedTweet)
-        tokensWithoutStopWords = removeStopWords(tokenizedTweet)
-        cleanTweets.append((tokensWithoutStopWords, sentiment))
+        if removeStopWordsFlag:
+            tokensWithoutStopWords = removeStopWords(tokenizedTweet)
+            cleanTweets.append((tokensWithoutStopWords, sentiment))
+        else:
+            cleanTweets.append((tokenizedTweet, sentiment))
+
+
     return cleanTweets
 
 
 #start extract_features
-def extract_features(tweet):
-     global FEATURELIST
-     tweet_words = set(tweet)
-     features = {}
-     for word in FEATURELIST:
-        features['contains(%s)' % word] = (word in tweet_words)
-     return features
-# #end
+# def extract_features(tweet):
+#      global FEATURELIST
+#      tweet_words = set(tweet)
+#      features = {}
+#      for word in FEATURELIST:
+#         features['contains(%s)' % word] = (word in tweet_words)
+#      return features
+# # #end
 
+def extract_features(words):
+    return dict([(word, True) for word in words])
 
 def NaiveBayes(trainSet, testSet):
     global FEATURELIST
+    tweets= []
     for row in trainSet:
         sentiment = row[1]
         featureDict = row[0]
         FEATURELIST.extend(featureDict)
+        tweets.append((extract_features(featureDict), sentiment));
 
     FEATURELIST = list(set(FEATURELIST))
 
-    training_set = nltk.classify.util.apply_features(extract_features, trainSet)
+    # training_set = nltk.classify.util.apply_features(extract_features, trainSet)
+    #NBClassifier = nltk.NaiveBayesClassifier.train(training_set)
 
-    NBClassifier = nltk.NaiveBayesClassifier.train(training_set)
+    NBClassifier = nltk.NaiveBayesClassifier.train(tweets)
+
     correct = 0
     total =0
     for row in testSet:
@@ -144,16 +169,21 @@ def NaiveBayes(trainSet, testSet):
         if str(actual_sentiment).lower() == str(predicted_sentiment).lower():
             correct +=1
 
-    print correct
-    print total
+    accuracy =  (correct / float(total)) * 100
 
-    accuracy =  correct / float(total)
-    print accuracy
+    print "Accuracy : %.2f" % accuracy
+    print  "(" + str(correct) + "/" + str(total) + ")"
+    return total,correct
 
 
 if __name__=='__main__':
     featureList = []
+    removeStpWordsFlag = True
+
     data_file = 'data/gop/august_candidates_form.csv'
+    #data_file = 'data/gop/march/combined_sample_unique_form.csv'
+
     rawTweets = csv.reader(open(data_file, 'rU'))
-    cleanTweets = preprocess(rawTweets)
+
+    cleanTweets = preprocess(rawTweets,removeStpWordsFlag)
     cross_validation(cleanTweets, NaiveBayes)
