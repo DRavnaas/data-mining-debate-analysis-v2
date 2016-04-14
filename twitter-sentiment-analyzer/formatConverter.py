@@ -1,20 +1,23 @@
 import csv
 import re
 
+## This
 records = []
 num = 0
+headers = {}
 
-reader = csv.reader(open('data/gop/august/august_full.csv', 'rU'))
-ofile = open('data/gop/august/august_full_form.csv',"wb+")
-#reader = csv.reader(open('data/gop/march/before_sample.csv', 'rU'))
-#ofile = open('data/gop/march/before_sample_form.csv',"wb+")
-writer = csv.writer(ofile,delimiter=',')
 
-for record in reader:
-    item = []
-    item.append('|' + str(record[0]) + '|')
-    item.append('|' + str(record[1]).replace('\r',' ').replace('\n', ' ') + '|')
-    records.append(item)
-    num = num + 1
+with open('data/gop/march/after_sample.csv', 'rU') as csvFile:
+    reader = csv.DictReader(csvFile)
 
-writer.writerows(records)
+    for row in reader:
+        item = []
+        item.append('|' + str(row["sentiment"]) + '|')
+        item.append('|' + str(row["text"]).replace('\r',' ').replace('\n', ' ') + '|')
+        records.append(item)
+        num = num + 1
+
+with open('data/gop/march/after_sample_form.csv',"wb+") as ofile:
+    writer = csv.writer(ofile,delimiter=',')
+    writer.writerows(records)
+

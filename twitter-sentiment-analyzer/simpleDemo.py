@@ -89,11 +89,16 @@ def extract_features(words):
 #Read the tweets one by one and process it
 #inpTweets = csv.reader(open('data/augustW.csv', 'rb'), delimiter=',', quotechar='|')
 
-trainTweets = csv.reader(open('data/gop/august_full_train_form.csv', 'rU'))
-#testTweets = csv.reader(open('data/gop/march/before_sample_form.csv', 'rU'))
+trainTweets = csv.reader(open('data/gop/august/august_full_train_form.csv', 'rU'))
+#trainTweets = csv.reader(open('data/gop/march/before_sample_form.csv', 'rU'))
+
+#testTweets = csv.reader(open('data/gop/august/august_full_test_form.csv', 'rU'))
+testTweets = csv.reader(open('data/gop/march/combined_sample_unique_form.csv', 'rU'))
 
 
-stopWords = getStopWordList('data/feature_list/stopwords.txt')
+stopWords = getStopWordList('data/gop/stopwords.txt')
+#stopWords = []
+
 count = 0;
 featureList = []
 tweets = []
@@ -109,14 +114,22 @@ for row in trainTweets:
 # Remove featureList duplicates
 featureList = list(set(featureList))
 
+# with open('data/gop/feature_list.txt','w') as f:
+#
+#     for feature in featureList:
+#         f.write("%s\n" % feature)
+
+
+
 # Generate the training set
 #training_set = nltk.classify.util.apply_features(extract_features, tweets)
 
 # Train the Naive Bayes classifier
 NBClassifier = nltk.NaiveBayesClassifier.train(tweets)
 #NBClassifier = nltk.NaiveBayesClassifier.train(training_set)
+print NBClassifier.show_most_informative_features(100)
 
-testTweets = csv.reader(open('data/gop/august_full_test_form.csv', 'rU'))
+
 correct = 0
 total =0
 for row in testTweets:
@@ -126,14 +139,21 @@ for row in testTweets:
     processedTestTweet = processTweet(testTweet)
     predicted_sentiment = NBClassifier.classify(extract_features(getFeatureVector(processedTestTweet, stopWords)))
     actual_sentiment = row[0]
-    if str(actual_sentiment) == str(predicted_sentiment):
+
+    if str(actual_sentiment).lower() == str(predicted_sentiment).lower():
         correct +=1
+    else:
+        if str(predicted_sentiment).lower() == "||":
+            print "Error predicting: " + str(testTweet) + str(predicted_sentiment).lower()
+        # else:
+        #     print "Incorrect prediction: " + str(testTweet) + "\n actual :  " + str(actual_sentiment).lower() +\
+        #            "     predicted:" + str(predicted_sentiment).lower()
 
     #print "actual sentiment = %s, predicted sentiment = %s, testTweet = %s,\n" % (row[0], predicted_sentiment,testTweet)
-print correct
-print total
 
-accuracy =  correct / float(total)
-print accuracy
 
-#print "Accuracy : %.2f" % ((correct/total)*100)
+accuracy =  (correct / float(total)) * 100
+#print accuracy
+
+print "Accuracy : %.2f" % accuracy
+print  "(" + str(correct) + "/" + str(total) + ")"
