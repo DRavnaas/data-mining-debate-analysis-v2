@@ -7,7 +7,7 @@ num = 0
 headers = {}
 
 
-with open('data/gop/march/combined_sample_unique.csv', 'rU') as csvFile:
+with open('data/gop/august/august_full.csv', 'rU') as csvFile:
     reader = csv.DictReader(csvFile)
 
     for row in reader:
@@ -18,7 +18,7 @@ with open('data/gop/march/combined_sample_unique.csv', 'rU') as csvFile:
         records.append(item)
         num = num + 1
 
-with open('data/gop/march/combined_sample_unique_form.csv',"wb+") as ofile:
+with open('data/gop/august/august_full_form.csv',"wb+") as ofile:
     writer = csv.writer(ofile,delimiter=',')
     writer.writerows(records)
 

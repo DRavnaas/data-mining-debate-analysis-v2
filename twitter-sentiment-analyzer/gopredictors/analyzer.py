@@ -175,15 +175,26 @@ def NaiveBayes(trainSet, testSet):
     print  "(" + str(correct) + "/" + str(total) + ")"
     return total,correct
 
+def getCleanTweets(data_file,removeStpWordsFlag):
+    rawTweets = csv.reader(open(data_file, 'rU'))
+    cleanTweets = preprocess(rawTweets,removeStpWordsFlag)
+    return  cleanTweets
 
 if __name__=='__main__':
     featureList = []
-    removeStpWordsFlag = True
+    removeStpWordsFlag = False
+    crossValdFlag = False
 
-    data_file = 'data/gop/august_candidates_form.csv'
-    #data_file = 'data/gop/march/combined_sample_unique_form.csv'
+    if  crossValdFlag:
+        data_file   = 'data/gop/august/august_full_form.csv'
+        cleanTweets = getCleanTweets(data_file,removeStpWordsFlag)
+        cross_validation(cleanTweets, NaiveBayes)
 
-    rawTweets = csv.reader(open(data_file, 'rU'))
+    else:
+        train_file  = 'data/gop/august/august_full_form.csv'
+        test_file   = 'data/gop/march/combined_sample_unique_form.csv'
 
-    cleanTweets = preprocess(rawTweets,removeStpWordsFlag)
-    cross_validation(cleanTweets, NaiveBayes)
+        trainTweets = getCleanTweets(train_file,removeStpWordsFlag)
+        testTweets  = getCleanTweets(test_file,removeStpWordsFlag)
+
+        NaiveBayes(trainTweets, testTweets)
