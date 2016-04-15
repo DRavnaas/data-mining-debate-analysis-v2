@@ -64,7 +64,7 @@ def getStopWordList(stopWordListFileName):
 
 def removeStopWords(words):
     featureVector = []
-    stopWords = getStopWordList('data/feature_list/stopwords.txt')
+    stopWords = getStopWordList('../data/gop/stopwords.txt')
     for w in words:
         val = re.search(r"^[a-zA-Z][a-zA-Z0-9]*[a-zA-Z]+[a-zA-Z0-9]*$", w)
         #ignore if it is a stopWord
@@ -187,7 +187,7 @@ if __name__=='__main__':
     NGRAMSFLAG = False
 
     if  CROSSVALIDFLAG:
-        data_file   = 'data/gop/august/august_full_form.csv'
+        data_file   = '../data/gop/august/august_full_form.csv'
         data = getCleanTweets(data_file)
         cross_validation(data, NaiveBayes)
 
