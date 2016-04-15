@@ -3,6 +3,11 @@ import csv
 import pprint
 import nltk.classify
 
+import itertools
+from nltk.collocations import BigramCollocationFinder
+from nltk.metrics import BigramAssocMeasures
+from nltk.corpus import stopwords
+
 #gloable for feature extraction
 FEATURELIST = []
 
@@ -37,6 +42,7 @@ def processTweet(tweet):
 #start getStopWordList
 def getStopWordList(stopWordListFileName):
     #read the stopwords
+    #return list(set(stopwords.words('english')))
     stopWords = []
     stopWords.append('AT_USER')
     stopWords.append('URL')
@@ -129,19 +135,70 @@ def preprocess(data,removeStopWordsFlag):
 
     return cleanTweets
 
+def preprocessNoFeatureList(data,removeStopWordsFlag, ngramList):
+    cleanTweets = []
+    for row in data:
+        sentiment = row[1]
+        tweet = row[2]
+        processedTweet = processTweet(tweet)
+        tokenizedTweet = tokenize(processedTweet)
+        if removeStopWordsFlag:
+            tokensWithoutStopWords = removeStopWords(tokenizedTweet)
+            cleanTweets.append((extract_features_nolist(tokensWithoutStopWords,ngramList), sentiment))
+        else:
+            cleanTweets.append((extract_features_nolist(tokenizedTweet,ngramList), sentiment))
+
+
+    return cleanTweets
+
 
 #start extract_features
-# def extract_features(tweet):
-#      global FEATURELIST
-#      tweet_words = set(tweet)
-#      features = {}
-#      for word in FEATURELIST:
-#         features['contains(%s)' % word] = (word in tweet_words)
-#      return features
-# # #end
+def extract_features(tweet):
+      global FEATURELIST
+      tweet_words = set(tweet)
+      features = {}
+      for word in FEATURELIST:
+         features['contains(%s)' % word] = (word in tweet_words)
+      return features
+ #end
 
-def extract_features(words):
-    return dict([(word, True) for word in words])
+def extract_features_nolist(words,ngramFlag):
+    if ngramFlag:
+        bigram_finder = BigramCollocationFinder.from_words(words)
+        bigrams = bigram_finder.nbest(BigramAssocMeasures.pmi, n=10)
+        return dict([(ngram, True) for ngram in itertools.chain(words, bigrams)])
+    else:
+        return dict([(word, True) for word in words])
+
+
+def NaiveBayesNoFeatureList(trainSet, testSet):
+
+    NBClassifier = nltk.NaiveBayesClassifier.train(trainSet)
+
+    correct = 0
+    total =0
+    for row in testSet:
+        total +=1
+        testTweet = row[0]
+        predicted_sentiment = NBClassifier.classify(testTweet)
+        actual_sentiment = row[1]
+        if str(actual_sentiment).lower() == str(predicted_sentiment).lower():
+            correct +=1
+
+    accuracy =  (correct / float(total)) * 100
+
+    print "Accuracy : %.2f" % accuracy
+    print  "(" + str(correct) + "/" + str(total) + ")"
+    return total,correct
+
+def getNGrams(words, score_fn=BigramAssocMeasures.pmi, n=10):
+    bigram_finder = BigramCollocationFinder.from_words(words)
+    bigrams = bigram_finder.nbest(score_fn, n)
+
+def word_feats(words, score_fn=BigramAssocMeasures.pmi, n=5):
+    bigram_finder = BigramCollocationFinder.from_words(words)
+    bigrams = bigram_finder.nbest(score_fn, n)
+    return dict([(ngram, True) for ngram in itertools.chain(words, bigrams)])
 
 def NaiveBayes(trainSet, testSet):
     global FEATURELIST
@@ -150,14 +207,12 @@ def NaiveBayes(trainSet, testSet):
         sentiment = row[1]
         featureDict = row[0]
         FEATURELIST.extend(featureDict)
-        tweets.append((extract_features(featureDict), sentiment));
+
 
     FEATURELIST = list(set(FEATURELIST))
 
-    # training_set = nltk.classify.util.apply_features(extract_features, trainSet)
-    #NBClassifier = nltk.NaiveBayesClassifier.train(training_set)
-
-    NBClassifier = nltk.NaiveBayesClassifier.train(tweets)
+    training_set = nltk.classify.util.apply_features(extract_features, trainSet)
+    NBClassifier = nltk.NaiveBayesClassifier.train(training_set)
 
     correct = 0
     total =0
@@ -175,26 +230,46 @@ def NaiveBayes(trainSet, testSet):
     print  "(" + str(correct) + "/" + str(total) + ")"
     return total,correct
 
+def getNBRunnableSet(data_file,removeStpWordsFlag,ngramList):
+    rawTweets = csv.reader(open(data_file, 'rU'))
+    cleanTweets = preprocessNoFeatureList(rawTweets, removeStpWordsFlag ,ngramList)
+    return cleanTweets
+
 def getCleanTweets(data_file,removeStpWordsFlag):
     rawTweets = csv.reader(open(data_file, 'rU'))
     cleanTweets = preprocess(rawTweets,removeStpWordsFlag)
-    return  cleanTweets
+    return cleanTweets
 
 if __name__=='__main__':
-    featureList = []
     removeStpWordsFlag = False
-    crossValdFlag = False
+    crossValdFlag = True
+    usingFeatureListFlag = False
+    ngramList = True
+    if not usingFeatureListFlag:
+        if  crossValdFlag:
+            data_file   = 'data/gop/august/august_full_form.csv'
+            data = getNBRunnableSet(data_file, removeStpWordsFlag, ngramList)
+            cross_validation(data, NaiveBayesNoFeatureList)
 
-    if  crossValdFlag:
-        data_file   = 'data/gop/august/august_full_form.csv'
-        cleanTweets = getCleanTweets(data_file,removeStpWordsFlag)
-        cross_validation(cleanTweets, NaiveBayes)
+        else:
+            train_file  = 'data/gop/august/august_full_form.csv'
+            test_file   = 'data/gop/march/combined_sample_unique_form.csv'
 
+            trainTweets = getNBRunnableSet(train_file,removeStpWordsFlag, ngramList)
+            testTweets  = getNBRunnableSet(test_file,removeStpWordsFlag,ngramList)
+
+            NaiveBayesNoFeatureList(trainTweets, testTweets)
     else:
-        train_file  = 'data/gop/august/august_full_form.csv'
-        test_file   = 'data/gop/march/combined_sample_unique_form.csv'
+        if crossValdFlag:
+            data_file = 'data/gop/august/august_full_form.csv'
+            cleanTweets = getCleanTweets(data_file, removeStpWordsFlag)
+            cross_validation(cleanTweets, NaiveBayes)
 
-        trainTweets = getCleanTweets(train_file,removeStpWordsFlag)
-        testTweets  = getCleanTweets(test_file,removeStpWordsFlag)
+        else:
+            train_file = 'data/gop/august/august_full_form.csv'
+            test_file = 'data/gop/march/combined_sample_unique_form.csv'
 
-        NaiveBayes(trainTweets, testTweets)
+            trainTweets = getCleanTweets(train_file, removeStpWordsFlag)
+            testTweets = getCleanTweets(test_file, removeStpWordsFlag)
+
+            NaiveBayes(trainTweets, testTweets)
