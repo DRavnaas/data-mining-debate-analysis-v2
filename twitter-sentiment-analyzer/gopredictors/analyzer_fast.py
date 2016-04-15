@@ -10,7 +10,6 @@ from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
 
 #gloable for feature extraction
-FEATURELIST = []
 REMOVESTPWORDSFLAG = None
 CROSSVALIDFLAG = None
 NGRAMSFLAG = None
@@ -136,57 +135,35 @@ def preprocess(data):
         tokenizedTweet = tokenize(processedTweet)
         if REMOVESTPWORDSFLAG:
             tokensWithoutStopWords = removeStopWords(tokenizedTweet)
-            cleanTweets.append((tokensWithoutStopWords, sentiment))
+            cleanTweets.append((extract_features(tokensWithoutStopWords), sentiment))
         else:
-            cleanTweets.append((tokenizedTweet, sentiment))
+            cleanTweets.append((extract_features(tokenizedTweet), sentiment))
 
 
     return cleanTweets
 
 
-#start extract_features
-def extract_features(tweet):
-      global FEATURELIST
-      tweet_words = []
-      tweet_words.extend(set(tweet))
-      if NGRAMSFLAG == True:
-          bigram_finder = BigramCollocationFinder.from_words(tweet)
-          bigrams = bigram_finder.nbest(BigramAssocMeasures.pmi, n=20)
-          tweet_words.extend(set(bigrams))
 
-      features = {}
-      for word in FEATURELIST:
-         features[word] = (word in tweet_words)
-      return features
- #end
-
+def extract_features(words):
+    global NGRAMSFLAG
+    if NGRAMSFLAG:
+        bigram_finder = BigramCollocationFinder.from_words(words)
+        bigrams = bigram_finder.nbest(BigramAssocMeasures.pmi, n=10)
+        return dict([(ngram, True) for ngram in itertools.chain(words, bigrams)])
+    else:
+        return dict([(word, True) for word in words])
 
 
 def NaiveBayes(trainSet, testSet):
-    global FEATURELIST
-    global NGRAMSFLAG
-    tweets= []
-    for row in trainSet:
-        sentiment = row[1]
-        featureDict = row[0]
-        FEATURELIST.extend(featureDict)
-        if NGRAMSFLAG == True:
-            bigram_finder = BigramCollocationFinder.from_words(featureDict)
-            bigrams = bigram_finder.nbest(BigramAssocMeasures.pmi, n=20)
-            FEATURELIST.extend(bigrams)
 
-
-    FEATURELIST = list(set(FEATURELIST))
-
-    training_set = nltk.classify.util.apply_features(extract_features, trainSet)
-    NBClassifier = nltk.NaiveBayesClassifier.train(training_set)
+    NBClassifier = nltk.NaiveBayesClassifier.train(trainSet)
 
     correct = 0
     total =0
     for row in testSet:
         total +=1
         testTweet = row[0]
-        predicted_sentiment = NBClassifier.classify(extract_features(testTweet))
+        predicted_sentiment = NBClassifier.classify(testTweet)
         actual_sentiment = row[1]
         if str(actual_sentiment).lower() == str(predicted_sentiment).lower():
             correct +=1
@@ -198,6 +175,7 @@ def NaiveBayes(trainSet, testSet):
     return total,correct
 
 
+
 def getCleanTweets(data_file):
     rawTweets = csv.reader(open(data_file, 'rU'))
     cleanTweets = preprocess(rawTweets)
@@ -206,18 +184,18 @@ def getCleanTweets(data_file):
 if __name__=='__main__':
     REMOVESTPWORDSFLAG = False
     CROSSVALIDFLAG = True
-    NGRAMSFLAG = True
+    NGRAMSFLAG = False
 
-    if CROSSVALIDFLAG:
-        data_file = 'data/gop/august/august_full_form.csv'
-        cleanTweets = getCleanTweets(data_file)
-        cross_validation(cleanTweets, NaiveBayes)
+    if  CROSSVALIDFLAG:
+        data_file   = 'data/gop/august/august_full_form.csv'
+        data = getCleanTweets(data_file)
+        cross_validation(data, NaiveBayes)
 
     else:
-        train_file = 'data/gop/august/august_full_form.csv'
-        test_file = 'data/gop/march/combined_sample_unique_form.csv'
+        train_file  = 'data/gop/august/august_full_form.csv'
+        test_file   = 'data/gop/march/combined_sample_unique_form.csv'
 
         trainTweets = getCleanTweets(train_file)
-        testTweets = getCleanTweets(test_file)
+        testTweets  = getCleanTweets(test_file)
 
         NaiveBayes(trainTweets, testTweets)
