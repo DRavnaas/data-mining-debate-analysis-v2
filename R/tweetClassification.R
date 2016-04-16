@@ -1,7 +1,9 @@
 library(RTextTools)
 library(caret)
+library(RTextTools)
+library(tm)
 
-tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
+tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE)
 {
   
   rebuildDocTerms <- FALSE
@@ -31,7 +33,8 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
   fold4 <- sentimentAug[sentimentAug$id %% 5 == 4, ]
   
   # Build containers where the last rows are the test fold
-  cv1All <- rbind(fold0, fold1, fold2, fold3, fold4)
+  #cv1All <- rbind(fold0, fold1, fold2, fold3, fold4)
+  cv1All <- sentimentAug
   cv2All <- rbind(fold1, fold2, fold3, fold4, fold0)
   cv3All <- rbind(fold2, fold3, fold4, fold0, fold1)
   cv4All <- rbind(fold3, fold4, fold0, fold1, fold2)
@@ -45,6 +48,16 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
   
   folds <- list(cv1All, cv2All, cv3All, cv4All, cv5All)
   foldNum <- 1
+  nGramLength <- 1 # run 1/2/3 = unigrams
+  
+  useCreateMatrix = FALSE
+  
+  if (nGramLength > 1)
+  {
+    # Create matrix doesn't work with ngram > 1
+    useCreateMatrix = FALSE
+  }
+  
   for (curFold in folds)
   {
     # build the data to specify response variable, training set, testing set.
@@ -52,20 +65,48 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
     
     cat("  Fold", foldNum, ": ")
     foldNum <- foldNum + 1
+
+    if (useCreateMatrix ==TRUE)
+    {
+      cat("Creating term matrix1...")
+      
+      docTerms <- create_matrix(
+        curFold$text,
+        language = "english",
+        removeStopwords = FALSE,  # run2 = false
+        minWordLength = 3,
+        ngramLength = nGramLength,  # run 1/2/3 = unigrams
+        weighting = tm::weightTfIdf,  # run1/2 = weightTf
+        removeNumbers = TRUE,
+        stemWords = FALSE,
+        toLower = TRUE,
+        removePunctuation = TRUE
+      )
+    }
+    if (useCreateMatrix == FALSE)
+    {
     
-    cat(" Creating term matrix...")
-    docTerms <- create_matrix(
-      curFold$text,
-      language = "english",
-      removeStopwords = FALSE,  # run2 = false
-      removeNumbers = TRUE,
-      stemWords = FALSE,
-      toLower = TRUE,
-      removePunctuation = TRUE,
-      minWordLength = 3,
-      weighting = tm::weightTfIdf,  # run1/2 = weightTf
-      ngramLength = 1
-    )
+      # nGramLength > 1 doesn't work, so use Weka to build term matrix.
+      # Note - need to keep this in sync with create_matrix above
+      cat("Creating term matrix2... ")
+      
+      corpus <- Corpus(VectorSource(curFold$text))
+     
+      corpus <- tm_map(corpus, removePunctuation)
+    
+      corpus <- tm_map(corpus, stripWhitespace)
+    
+      corpus <- tm_map(corpus, removeNumbers)
+    
+      xgramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = nGramLength, max = nGramLength))
+      docTerms <- DocumentTermMatrix(corpus,
+                              control=list(weighting=weightTfIdf, 
+                                           tokenize = xgramTokenizer))
+
+    }  
+  
+    # Want to see what the terms ended up being?
+    # inspect(docTerms[1,])
     
     # build container for this fold = train versus test rows and label
     container = create_container(
@@ -96,14 +137,18 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
       confusionMatrix(results$MAXENTROPY_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
     }
     
-    # Get svm results for this fold
-    accuracyForFold.svm <-
-      recall_accuracy(as.numeric(as.factor(curFold$sentiment[testRows])), results[, "SVM_LABEL"])
-    accSumAcrossFolds.svm <- accSumAcrossFolds.svm + accuracyForFold.svm
-    
-    if (verbose)
+    accuracyForFold.svm = "NA"
+    if (length(algos) > 1)
     {
-      confusionMatrix(results$SVM_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
+      # Get svm results for this fold
+      accuracyForFold.svm <-
+        recall_accuracy(as.numeric(as.factor(curFold$sentiment[testRows])), results[, "SVM_LABEL"])
+      accSumAcrossFolds.svm <- accSumAcrossFolds.svm + accuracyForFold.svm
+    
+      if (verbose)
+      {
+        confusionMatrix(results$SVM_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
+      }
     }
     
     print(cat("  Fold accuracy: ", accuracyForFold.maxEnt, " maxent, ", accuracyForFold.svm, " svm "))
@@ -117,6 +162,13 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
     summary(analytics)
     head(analytics@document_summary)
     analytics@ensemble_summary
+
+    if (doJustOneFold == TRUE)
+    {
+      # Useful when testing out some new code.
+      break
+    }
+    
   }
     
   meanAcc.maxEnt <- accSumAcrossFolds.maxEnt / 5
@@ -127,6 +179,8 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
   
   print(cat("Mean accuracy across 5 folds, svm: ", meanAcc.svm, " "))
 
+
+  
 }
 
 buildTermMatrix <- function(trainTweets, testTweets)
