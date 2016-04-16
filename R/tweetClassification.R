@@ -50,7 +50,7 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
   accSumAcrossFolds.glmnet <- 0
   
   folds <- list(cv1All, cv2All, cv3All, cv4All, cv5All)
-  foldNum <- 1
+  foldNum <- 0
   nGramLength <- 1 # run 1/2/3 = unigrams
   
   useCreateMatrix = FALSE
@@ -66,8 +66,8 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
     # build the data to specify response variable, training set, testing set.
     # virgin=FALSE means has a label (TRUE = data we haven't seen/labeled)
     
-    cat("  Fold", foldNum, ": ")
     foldNum <- foldNum + 1
+    cat("  Fold", foldNum, ": ")
 
     if (useCreateMatrix ==TRUE)
     {
@@ -195,17 +195,17 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
 
   }
     
-  meanAcc.maxEnt <- accSumAcrossFolds.maxEnt / 5
+  meanAcc.maxEnt <- accSumAcrossFolds.maxEnt / foldNum
   
-  print(cat("Mean accuracy across 5 folds, MAXENT: ", meanAcc.maxEnt, " "))
+  print(cat("Mean accuracy across folds, MAXENT: ", meanAcc.maxEnt, " "))
   
-  meanAcc.glmnet <- accSumAcrossFolds.glmnet / 5
+  meanAcc.glmnet <- accSumAcrossFolds.glmnet / foldNum
   
-  print(cat("Mean accuracy across 5 folds, glmnet: ", meanAcc.glmnet, " "))
+  print(cat("Mean accuracy across folds, glmnet: ", meanAcc.glmnet, " "))
 
-  meanAcc.svm <- accSumAcrossFolds.svm / 5
+  meanAcc.svm <- accSumAcrossFolds.svm / foldNum
   
-  print(cat("Mean accuracy across 5 folds, svm: ", meanAcc.svm, " "))
+  print(cat("Mean accuracy across folds, svm:    ", meanAcc.svm, " "))
   
 }
 
