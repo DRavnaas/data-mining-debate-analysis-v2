@@ -57,16 +57,17 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
     docTerms <- create_matrix(
       curFold$text,
       language = "english",
-      removeStopwords = TRUE,  # run1 = false
+      removeStopwords = FALSE,  # run2 = false
       removeNumbers = TRUE,
       stemWords = FALSE,
       toLower = TRUE,
       removePunctuation = TRUE,
       minWordLength = 3,
-      weighting = tm::weightTf,
+      weighting = tm::weightTfIdf,  # run1/2 = weightTf
       ngramLength = 1
     )
     
+    # build container for this fold = train versus test rows and label
     container = create_container(
       docTerms,
       as.numeric(as.factor(curFold$sentiment)),
@@ -105,9 +106,19 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
       confusionMatrix(results$SVM_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
     }
     
-    print(cat("  Fold accuracy (MAXENT, sVM): ", accuracyForFold.maxEnt, ", ", accuracyForFold.svm, " "))
+    print(cat("  Fold accuracy: ", accuracyForFold.maxEnt, " maxent, ", accuracyForFold.svm, " svm "))
   }
-  
+
+  # model summary - work out how to use/aggregate this for 5 folds?
+  if (verbose)
+  {
+    print("Analytics for last fold: ")
+    analytics = create_analytics(container, results)
+    summary(analytics)
+    head(analytics@document_summary)
+    analytics@ensemble_summary
+  }
+    
   meanAcc.maxEnt <- accSumAcrossFolds.maxEnt / 5
   
   print(cat("Mean accuracy across 5 folds, MAXENT: ", meanAcc.maxEnt, " "))
@@ -115,31 +126,7 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
   meanAcc.svm <- accSumAcrossFolds.svm / 5
   
   print(cat("Mean accuracy across 5 folds, svm: ", meanAcc.svm, " "))
-  
-  #table(as.numeric(as.factor(sentimentAug$sentiment[testRows])), results[,"SVM_LABEL"])
-  #recall_accuracy(as.numeric(as.factor(sentimentAug$sentiment[testRows])), results[,"SVM_LABEL"])
-  
-  #table(as.numeric(as.factor(sentimentAug$sentiment[testRows])), results[,"GLMNET_LABEL"])
-  #recall_accuracy(as.numeric(as.factor(sentimentAug$sentiment[testRows])), results[,"GLMNET_LABEL"])
-  
-  #confusionMatrix(results$MAXENTROPY_LABEL, as.numeric(as.factor(sentimentAug$sentiment[11098:13871])))
-  
-  
-  # model summary
-  #analytics = create_analytics(container, results)
-  #summary(analytics)
-  #head(analytics@document_summary)
-  #analytics@ensemble_summary
-  
-  # 5 fold cross validation
-  
-  
-  #N=5
-  #set.seed(2014)
-  #cross_validate(container,N,"MAXENT")
-  #cross_validate(container,N,"SVM")
-  
-  
+
 }
 
 buildTermMatrix <- function(trainTweets, testTweets)
