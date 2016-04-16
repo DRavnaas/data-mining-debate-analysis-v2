@@ -32,7 +32,9 @@ def processTweet(tweet):
     #Convert www.* or https?://* to URL
     tweet = re.sub('((www\.[^\s]+)|(https?://[^\s]+))','URL',tweet)
     #Convert @username to AT_USER
-    tweet = re.sub('@[^\s]+','AT_USER',tweet)    
+    #tweet = re.sub('@[^\s]+','AT_USER',tweet)
+    tweet = re.sub('@[^\s]+','\1',tweet)
+
     #Remove additional white spaces
     tweet = re.sub('[\s]+', ' ', tweet)
     #Replace #word with word
@@ -64,7 +66,7 @@ def getStopWordList(stopWordListFileName):
 
 def removeStopWords(words):
     featureVector = []
-    stopWords = getStopWordList('../data/gop/stopwords.txt')
+    stopWords = getStopWordList('data/gop/stopwords.txt')
     for w in words:
         val = re.search(r"^[a-zA-Z][a-zA-Z0-9]*[a-zA-Z]+[a-zA-Z0-9]*$", w)
         #ignore if it is a stopWord
@@ -155,18 +157,35 @@ def extract_features(words):
 
 
 def NaiveBayes(trainSet, testSet):
+    global DROP_NEUTRAL
+    global PRINT_INCORRECT_PREDICTIONS
 
     NBClassifier = nltk.NaiveBayesClassifier.train(trainSet)
 
     correct = 0
     total =0
     for row in testSet:
-        total +=1
         testTweet = row[0]
-        predicted_sentiment = NBClassifier.classify(testTweet)
-        actual_sentiment = row[1]
-        if str(actual_sentiment).lower() == str(predicted_sentiment).lower():
-            correct +=1
+        predicted_sentiment = str(NBClassifier.classify(testTweet)).lower()
+        actual_sentiment = str(row[1]).lower()
+
+        if DROP_NEUTRAL:
+            if predicted_sentiment != '|neutral|':
+                total +=1
+                if actual_sentiment == predicted_sentiment:
+                    correct +=1
+        else:
+            total +=1
+            if actual_sentiment == predicted_sentiment:
+                correct +=1
+            else:
+                if PRINT_INCORRECT_PREDICTIONS:
+                    tweet = ""
+                    for word in testTweet:
+                        tweet = tweet + word + " "
+
+                    print ("Tweet: %s  \n actual_sentiment: %s   predicted_sentiment: %s" \
+                            %(tweet,actual_sentiment,predicted_sentiment))
 
     accuracy =  (correct / float(total)) * 100
 
@@ -183,8 +202,12 @@ def getCleanTweets(data_file):
 
 if __name__=='__main__':
     REMOVESTPWORDSFLAG = False
-    CROSSVALIDFLAG = True
-    NGRAMSFLAG = False
+    NGRAMSFLAG = True
+    DROP_NEUTRAL = True
+    PRINT_INCORRECT_PREDICTIONS = False
+
+    CROSSVALIDFLAG = False
+
 
     if  CROSSVALIDFLAG:
         data_file   = '../data/gop/august/august_full_form.csv'
@@ -192,8 +215,8 @@ if __name__=='__main__':
         cross_validation(data, NaiveBayes)
 
     else:
-        train_file  = 'data/gop/august/august_full_form.csv'
-        test_file   = 'data/gop/march/combined_sample_unique_form.csv'
+        train_file  = '../data/gop/august/august_full_active_form_manip.csv'
+        test_file   = '../data/gop/march/combined_sample_unique_quote_form.csv'
 
         trainTweets = getCleanTweets(train_file)
         testTweets  = getCleanTweets(test_file)
