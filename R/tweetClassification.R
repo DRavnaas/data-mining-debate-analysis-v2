@@ -1,6 +1,5 @@
 library(RTextTools)
-library(e1071)
-
+library(caret)
 
 tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
 {
@@ -17,33 +16,14 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
         header = TRUE
       )
     
-    rebuildDocTerms = TRUE
   }
-  
-  # need to prune term matrix down somehow - 10k tweets gets some errors.
-  # figure out how to customize stopwords?
-  
-  if (rebuildDocTerms || is.null(docTerms) || dim(docTerms)[1] != 13871)
-  {
-    #print('Creating default term matrix')
-    
-      #docTerms <- create_matrix(
-      #sentimentAug$text,
-      #language = "english",
-      #removeStopwords = FALSE,
-      #removeNumbers = TRUE,
-      #stemWords = FALSE,
-      #toLower = TRUE,
-      #removePunctuation = TRUE,
-      #minWordLength = 3,
-      #weighting = tm::weightTf,
-      #ngramLength = 1
-    #)
-  }
+
   
   print('Creating fold list')
   
   # build folds of the data for cross validation
+  # the id happens to be a row number
+  # TODO: make sure we have this column for march csv for R
   fold0 <- sentimentAug[sentimentAug$id %% 5 == 0, ]
   fold1 <- sentimentAug[sentimentAug$id %% 5 == 1, ]
   fold2 <- sentimentAug[sentimentAug$id %% 5 == 2, ]
@@ -60,7 +40,8 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
   trainRows <- 1:11097
   testRows <-    11098:13871
   
-  accSumAcrossFolds <- 0
+  accSumAcrossFolds.maxEnt <- 0
+  accSumAcrossFolds.svm <- 0
   
   folds <- list(cv1All, cv2All, cv3All, cv4All, cv5All)
   foldNum <- 1
@@ -72,11 +53,11 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
     cat("  Fold", foldNum, ": ")
     foldNum <- foldNum + 1
     
-    cat(" creating term matrix...")
+    cat(" Creating term matrix...")
     docTerms <- create_matrix(
       curFold$text,
       language = "english",
-      removeStopwords = FALSE,
+      removeStopwords = TRUE,  # run1 = false
       removeNumbers = TRUE,
       stemWords = FALSE,
       toLower = TRUE,
@@ -97,31 +78,43 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE)
     
     # For each model, train and get test results and accuracy
     # You can lump these together to run as an ensemble, but they take a while to run.
-    algos = c("MAXENT") #, "SVM")
+    algos = c("MAXENT", "SVM")
     
-    cat("Running algorithm", algos, "...")
+    cat("Running ", algos, "...")
     
     models = train_models(container, algorithms = algos)
     results = classify_models(container, models)
     
-    #table(as.numeric(as.factor(curFold$sentiment[testRows])), results[,"MAXENTROPY_LABEL"])
-    accuracyForFold <-
+    # Get maxEnt results for this fold
+    accuracyForFold.maxEnt <-
       recall_accuracy(as.numeric(as.factor(curFold$sentiment[testRows])), results[, "MAXENTROPY_LABEL"])
-    foldConfMatrix <-
-      confusionMatrix(results$MAXENTROPY_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
-    accSumAcrossFolds <- accSumAcrossFolds + accuracyForFold
+    accSumAcrossFolds.maxEnt <- accSumAcrossFolds.maxEnt + accuracyForFold.maxEnt
     
     if (verbose)
     {
-      print(foldConfMatrix)
+      confusionMatrix(results$MAXENTROPY_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
     }
     
-    print(cat("  Accuracy for fold: ", accuracyForFold, " "))
+    # Get svm results for this fold
+    accuracyForFold.svm <-
+      recall_accuracy(as.numeric(as.factor(curFold$sentiment[testRows])), results[, "SVM_LABEL"])
+    accSumAcrossFolds.svm <- accSumAcrossFolds.svm + accuracyForFold.svm
+    
+    if (verbose)
+    {
+      confusionMatrix(results$SVM_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
+    }
+    
+    print(cat("  Fold accuracy (MAXENT, sVM): ", accuracyForFold.maxEnt, ", ", accuracyForFold.svm, " "))
   }
   
-  meanAcc <- accSumAcrossFolds / 5
+  meanAcc.maxEnt <- accSumAcrossFolds.maxEnt / 5
   
-  print(cat("Mean accuracy across 5 folds: ", meanAcc))
+  print(cat("Mean accuracy across 5 folds, MAXENT: ", meanAcc.maxEnt, " "))
+  
+  meanAcc.svm <- accSumAcrossFolds.svm / 5
+  
+  print(cat("Mean accuracy across 5 folds, svm: ", meanAcc.svm, " "))
   
   #table(as.numeric(as.factor(sentimentAug$sentiment[testRows])), results[,"SVM_LABEL"])
   #recall_accuracy(as.numeric(as.factor(sentimentAug$sentiment[testRows])), results[,"SVM_LABEL"])
