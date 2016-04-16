@@ -1,6 +1,6 @@
 library(RTextTools)
 library(caret)
-library(RTextTools)
+library(RWeka)
 library(tm)
 
 tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE)
@@ -11,6 +11,8 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
   # Read in data if necessary
   if (is.null(sentimentAug) || dim(sentimentAug)[1] != 13871)
   {
+    # This file is in github: 
+    # https://github.com/yogimiraje/data-mining-debate-analysis/tree/master/R
     print('Reading in august tweets')
     sentimentAug <-
       read.csv(
@@ -171,7 +173,7 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
 
     if (length(algos) > 1)
     {
-      analytics@ensemble_summary
+      print(analytics@ensemble_summary)
     }
     
     if (doJustOneFold == TRUE)
@@ -188,8 +190,8 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
   {
     print("Analytics for last fold: ")
     analytics = create_analytics(container, results)
-    summary(analytics)
-    head(analytics@document_summary)
+    #print(summary(analytics))
+    print(head(analytics@document_summary))
 
   }
     
@@ -197,11 +199,13 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
   
   print(cat("Mean accuracy across 5 folds, MAXENT: ", meanAcc.maxEnt, " "))
   
+  meanAcc.glmnet <- accSumAcrossFolds.glmnet / 5
+  
+  print(cat("Mean accuracy across 5 folds, glmnet: ", meanAcc.glmnet, " "))
+
   meanAcc.svm <- accSumAcrossFolds.svm / 5
   
   print(cat("Mean accuracy across 5 folds, svm: ", meanAcc.svm, " "))
-
-
   
 }
 
