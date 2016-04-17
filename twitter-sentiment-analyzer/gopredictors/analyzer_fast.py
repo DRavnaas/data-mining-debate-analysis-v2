@@ -66,7 +66,7 @@ def getStopWordList(stopWordListFileName):
 
 def removeStopWords(words):
     featureVector = []
-    stopWords = getStopWordList('data/gop/stopwords.txt')
+    stopWords = getStopWordList('../data/gop/stopwords.txt')
     for w in words:
         val = re.search(r"^[a-zA-Z][a-zA-Z0-9]*[a-zA-Z]+[a-zA-Z0-9]*$", w)
         #ignore if it is a stopWord
@@ -150,7 +150,7 @@ def extract_features(words):
     global NGRAMSFLAG
     if NGRAMSFLAG:
         bigram_finder = BigramCollocationFinder.from_words(words)
-        bigrams = bigram_finder.nbest(BigramAssocMeasures.pmi, n=10)
+        bigrams = bigram_finder.nbest(BigramAssocMeasures.pmi, n=14)
         return dict([(ngram, True) for ngram in itertools.chain(words, bigrams)])
     else:
         return dict([(word, True) for word in words])
@@ -161,6 +161,8 @@ def NaiveBayes(trainSet, testSet):
     global PRINT_INCORRECT_PREDICTIONS
 
     NBClassifier = nltk.NaiveBayesClassifier.train(trainSet)
+
+    #print NBClassifier.show_most_informative_features(100)
 
     correct = 0
     total =0
@@ -201,7 +203,7 @@ def getCleanTweets(data_file):
     return cleanTweets
 
 if __name__=='__main__':
-    REMOVESTPWORDSFLAG = False
+    REMOVESTPWORDSFLAG = True
     NGRAMSFLAG = True
     DROP_NEUTRAL = True
     PRINT_INCORRECT_PREDICTIONS = False
