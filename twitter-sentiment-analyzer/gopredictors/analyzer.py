@@ -204,6 +204,7 @@ def selectionFunc2(feature_count,total_pos_count,total_neg_count,total_neu_count
     #              pos,neg,neu
     # not contain
     # contain
+    feature_count={'|Positive|':feature_count[0], '|Negative|':feature_count[1],'|Neutral|':feature_count[2]}
     totalData = total_pos_count+total_neg_count+total_neu_count
     pt = (feature_count['|Positive|'] + feature_count['|Negative|'] + feature_count['|Neutral|'])*1.0/totalData
     p_not_t = 1-pt
@@ -230,38 +231,49 @@ def selectionFunc2(feature_count,total_pos_count,total_neg_count,total_neu_count
             chi += (pow(N[j][i] - E[j][i],2))*1.0/E[j][i]
     return chi
 
-def selectFeatures(trainSet, featureList):
+def createFeatureDict(trainSet, featureList):
     global NGRAMSFLAG
+    feature_dict = dict([(featureList[i], [0, 0, 0]) for i in range(0, len(featureList))])
+    for each in trainSet:
+        tweetTokens = each[0]
+        if each[1] == '|Positive|':
+            y_idx =0
+        elif each[1] == '|Negative|':
+            y_idx =1
+        elif each[1] == '|Neutral|':
+            y_idx =2
+        for word in tweetTokens:
+            feature_dict[word][y_idx] += 1
+        if NGRAMSFLAG == True:
+            bigram_finder = BigramCollocationFinder.from_words(tweetTokens)
+            bigrams = bigram_finder.nbest(BigramAssocMeasures.pmi, n=20)
+            for bg in bigrams:
+                feature_dict[bg][y_idx] += 1
+    return feature_dict
+
+
+
+def selectFeatures(trainSet, featureList):
+
+    feature_dict =createFeatureDict(trainSet, featureList)
     sortedList = []
-    total_pos_count,total_neg_count,total_neu_count  = getTotalCount(trainSet)
-    int_count = 0
+    total_pos_count,total_neg_count,total_neu_count = getTotalCount(trainSet)
     for feature in featureList:
-        int_count += 1
-        count = dict([('|Positive|',0),('|Negative|',0),('|Neutral|',0)])
-        for each in trainSet:
-            tweetTokens = each[0]
-            if NGRAMSFLAG == True:
-                bigram_finder = BigramCollocationFinder.from_words(tweetTokens)
-                bigrams = bigram_finder.nbest(BigramAssocMeasures.pmi, n=20)
-            if (feature in tweetTokens) or (NGRAMSFLAG and feature in bigrams):
-                count[each[1]] += 1
-        if count['|Positive|'] + count['|Negative|'] +count['|Neutral|'] == 1:
-            continue
         #m = selectionFunc1(count)
-        m = selectionFunc2(count,total_pos_count,total_neg_count,total_neu_count)
+        m = selectionFunc2(feature_dict[feature],total_pos_count,total_neg_count,total_neu_count)
         sortedList.append((feature, m))
-        print int_count, feature, m
+        #print int_count, feature, m
     #topN  = 12000
     sortedList = sorted(sortedList, key=lambda tup: tup[1])
     sortedList = sortedList[::-1]
     topN = 0
-    # for i in range(0,len(featureList)):
-    #     if sortedList[i][1] > 2.71:
-    #         topN+=1
-    #     else:
-    #         break
-    #topN = len(featureList)
-    topN = 12000
+    for i in range(0,len(sortedList)):
+        if sortedList[i][1] > 1:
+            print sortedList[i]
+            topN+=1
+        else:
+            break
+    topN = 15000
     return [sortedList[i][0] for i in range(0,topN)]
 
 
