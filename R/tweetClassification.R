@@ -1,6 +1,6 @@
 library(RTextTools)
 library(caret)
-library(RTextTools)
+library(RWeka)
 library(tm)
 
 tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE)
@@ -11,6 +11,8 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
   # Read in data if necessary
   if (is.null(sentimentAug) || dim(sentimentAug)[1] != 13871)
   {
+    # This file is in github: 
+    # https://github.com/yogimiraje/data-mining-debate-analysis/tree/master/R
     print('Reading in august tweets')
     sentimentAug <-
       read.csv(
@@ -45,9 +47,10 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
   
   accSumAcrossFolds.maxEnt <- 0
   accSumAcrossFolds.svm <- 0
+  accSumAcrossFolds.glmnet <- 0
   
   folds <- list(cv1All, cv2All, cv3All, cv4All, cv5All)
-  foldNum <- 1
+  foldNum <- 0
   nGramLength <- 1 # run 1/2/3 = unigrams
   
   useCreateMatrix = FALSE
@@ -63,8 +66,8 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
     # build the data to specify response variable, training set, testing set.
     # virgin=FALSE means has a label (TRUE = data we haven't seen/labeled)
     
-    cat("  Fold", foldNum, ": ")
     foldNum <- foldNum + 1
+    cat("  Fold", foldNum, ": ")
 
     if (useCreateMatrix ==TRUE)
     {
@@ -120,7 +123,7 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
     
     # For each model, train and get test results and accuracy
     # You can lump these together to run as an ensemble, but they take a while to run.
-    algos = c("MAXENT", "SVM")
+    algos = c("MAXENT", "GLMNET", "SVM")  #SVM takes a while, the other two are pretty quick
     
     cat("Running ", algos, "...")
     
@@ -136,9 +139,23 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
     {
       confusionMatrix(results$MAXENTROPY_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
     }
-    
-    accuracyForFold.svm = "NA"
+ 
+    accuracyForFold.glmnet = "NA"
     if (length(algos) > 1)
+    {
+      # Get svm results for this fold
+      accuracyForFold.glmnet <-
+        recall_accuracy(as.numeric(as.factor(curFold$sentiment[testRows])), results$GLMNET_LABEL)
+      accSumAcrossFolds.glmnet <- accSumAcrossFolds.glmnet + accuracyForFold.glmnet
+      
+      if (verbose)
+      {
+        confusionMatrix(results$GLMNET_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
+      }
+    }
+       
+    accuracyForFold.svm = "NA"
+    if (length(algos) > 2)
     {
       # Get svm results for this fold
       accuracyForFold.svm <-
@@ -150,36 +167,45 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
         confusionMatrix(results$SVM_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
       }
     }
+
+    print(cat("  Fold accuracy: ", accuracyForFold.maxEnt, " maxent, ", accuracyForFold.svm, " svm ",
+              accuracyForFold.glmnet, " glmnet "))
+
+    if (length(algos) > 1)
+    {
+      print(analytics@ensemble_summary)
+    }
     
-    print(cat("  Fold accuracy: ", accuracyForFold.maxEnt, " maxent, ", accuracyForFold.svm, " svm "))
-  }
-
-  # model summary - work out how to use/aggregate this for 5 folds?
-  if (verbose)
-  {
-    print("Analytics for last fold: ")
-    analytics = create_analytics(container, results)
-    summary(analytics)
-    head(analytics@document_summary)
-    analytics@ensemble_summary
-
     if (doJustOneFold == TRUE)
     {
       # Useful when testing out some new code.
       break
     }
-    
+  }
+
+  # model summary - work out how to use/aggregate this for 5 folds?
+
+  
+  if (verbose == TRUE && length(algos) > 1)
+  {
+    print("Analytics for last fold: ")
+    analytics = create_analytics(container, results)
+    #print(summary(analytics))
+    print(head(analytics@document_summary))
+
   }
     
-  meanAcc.maxEnt <- accSumAcrossFolds.maxEnt / 5
+  meanAcc.maxEnt <- accSumAcrossFolds.maxEnt / foldNum
   
-  print(cat("Mean accuracy across 5 folds, MAXENT: ", meanAcc.maxEnt, " "))
+  print(cat("Mean accuracy across folds, MAXENT: ", meanAcc.maxEnt, " "))
   
-  meanAcc.svm <- accSumAcrossFolds.svm / 5
+  meanAcc.glmnet <- accSumAcrossFolds.glmnet / foldNum
   
-  print(cat("Mean accuracy across 5 folds, svm: ", meanAcc.svm, " "))
+  print(cat("Mean accuracy across folds, glmnet: ", meanAcc.glmnet, " "))
 
-
+  meanAcc.svm <- accSumAcrossFolds.svm / foldNum
+  
+  print(cat("Mean accuracy across folds, svm:    ", meanAcc.svm, " "))
   
 }
 

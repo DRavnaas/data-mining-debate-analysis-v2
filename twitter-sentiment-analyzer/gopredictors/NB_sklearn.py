@@ -1,14 +1,14 @@
 import re
 import csv
-import pprint
-import nltk.classify
+
 import random
 
-import itertools
 from nltk.collocations import BigramCollocationFinder
 from nltk.metrics import BigramAssocMeasures
-from nltk.corpus import stopwords
-from nltk.tokenize import RegexpTokenizer
+from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import BernoulliNB
+
+from sklearn.linear_model import LogisticRegression
 
 #gloable for feature extraction
 FEATURELIST = []
@@ -21,20 +21,20 @@ NGRAMSFLAG = None
 #start replaceTwoOrMore
 def replaceTwoOrMore(s):
     #look for 2 or more repetitions of character
-    pattern = re.compile(r"(.)\1{1,}", re.DOTALL) 
+    pattern = re.compile(r"(.)\1{1,}", re.DOTALL)
     return pattern.sub(r"\1\1", s)
 #end
 
 #start process_tweet
 def processTweet(tweet):
     # process the tweets
-    
+
     #Convert to lower case
     tweet = tweet.lower()
     #Convert www.* or https?://* to URL
     tweet = re.sub('((www\.[^\s]+)|(https?://[^\s]+))','URL',tweet)
     #Convert @username to AT_USER
-    tweet = re.sub('@[^\s]+','AT_USER',tweet)    
+    tweet = re.sub('@[^\s]+','AT_USER',tweet)
     #Remove additional white spaces
     tweet = re.sub('[\s]+', ' ', tweet)
     #Replace #word with word
@@ -42,7 +42,7 @@ def processTweet(tweet):
     #trim
     tweet = tweet.strip('\'"')
     return tweet
-#end 
+#end
 
 #start getStopWordList
 def getStopWordList(stopWordListFileName):
@@ -156,49 +156,18 @@ def extract_features(tweet):
           bigrams = bigram_finder.nbest(BigramAssocMeasures.pmi, n=20)
           tweet_words.extend(set(bigrams))
 
-      features = {}
+      features = []
       for word in FEATURELIST:
-         features[word] = (word in tweet_words)
+         features.append(word in tweet_words)
       return features
  #end
 
 def getTotalCount(trainSet):
-    pos_count = 0
-    neg_count = 0
-    neu_count = 0
+    totalCount = {'|Positive|':0, '|Negative|':0,'|Neutral|':0}
     for each in trainSet:
-        if each[1] == '|Positive|':
-            pos_count += 1
-        elif each[1] == '|Negative|':
-            neg_count += 1
-        elif each[1] == '|Neutral|':
-            neu_count += 1
-    print pos_count,neg_count,neu_count
-    return pos_count,neg_count,neu_count
+        totalCount[each[1]] += 1
+    return totalCount['|Positive|'], totalCount['|Negative|'], totalCount['|Neutral|']
 
-def selectionFunc1(count):
-    if count['|Positive|'] == 0 or count['|Negative|'] == 0:
-        c1 = (count['|Positive|'] + 1) * 1.0 / (count['|Negative|'] + 1)
-    else:
-        c1 = count['|Positive|'] * 1.0 / count['|Negative|']
-    if c1 < 1:
-        c1 = 1 / c1
-
-    if count['|Neutral|'] == 0 or count['|Negative|'] == 0:
-        c2 = (count['|Neutral|'] + 1) * 1.0 / (count['|Negative|'] + 1)
-    else:
-        c2 = count['|Neutral|'] * 1.0 / count['|Negative|']
-    if c2 < 1:
-        c2 = 1 / c2
-
-    if count['|Neutral|'] == 0 or count['|Positive|'] == 0:
-        c3 = (count['|Neutral|'] + 1) * 1.0 / (count['|Positive|'] + 1)
-    else:
-        c3 = count['|Neutral|'] * 1.0 / count['|Positive|']
-    if c3 < 1:
-        c3 = 1 / c3
-
-    m = max(c1, c2, c3)
 
 def selectionFunc2(feature_count,total_pos_count,total_neg_count,total_neu_count):
     #              pos,neg,neu
@@ -268,26 +237,27 @@ def selectFeatures(trainSet, featureList):
     sortedList = sortedList[::-1]
     topN = 0
     for i in range(0,len(sortedList)):
-        if sortedList[i][1] > 1:
-            print sortedList[i]
+        if sortedList[i][1] > 0.7:
+            #print sortedList[i]
             topN+=1
         else:
             break
-    topN = 15000
+    #topN = 3500
+    #topN = len(sortedList)
     return [sortedList[i][0] for i in range(0,topN)]
 
 
-def NaiveBayes(trainSet, testSet):
+def classifyAlgo(trainSet, testSet):
     global FEATURELIST
     global NGRAMSFLAG
     FEATURELIST = []
     tweets= []
     for row in trainSet:
         sentiment = row[1]
-        featureDict = row[0]
-        FEATURELIST.extend(featureDict)
+        tweetTokens = row[0]
+        FEATURELIST.extend(tweetTokens)
         if NGRAMSFLAG == True:
-            bigram_finder = BigramCollocationFinder.from_words(featureDict)
+            bigram_finder = BigramCollocationFinder.from_words(tweetTokens)
             bigrams = bigram_finder.nbest(BigramAssocMeasures.pmi, n=20)
             FEATURELIST.extend(bigrams)
 
@@ -296,17 +266,30 @@ def NaiveBayes(trainSet, testSet):
 
     FEATURELIST = selectFeatures(trainSet, FEATURELIST)
 
-    training_set = nltk.classify.util.apply_features(extract_features, trainSet)
-    NBClassifier = nltk.NaiveBayesClassifier.train(training_set)
+    train_data = []
+    train_target = []
+    int_i = 0
+    for train_point in trainSet:
+        train_data.append(extract_features(train_point[0]))
+        train_target.append(train_point[1])
+        int_i += 1
+    #model = LogisticRegression()
+    #model = GaussianNB()
+    model  = BernoulliNB()
+    model.fit(train_data, train_target)
+    test_data = []
+    test_target = []
+    for test_point in testSet:
+        test_data.append(extract_features(test_point[0]))
+        test_target.append(test_point[1])
 
+    predicted = model.predict(test_data)
+
+    total = 0
     correct = 0
-    total =0
-    for row in testSet:
+    for i in range(0, len(predicted)):
         total +=1
-        testTweet = row[0]
-        predicted_sentiment = NBClassifier.classify(extract_features(testTweet))
-        actual_sentiment = row[1]
-        if str(actual_sentiment).lower() == str(predicted_sentiment).lower():
+        if str(predicted[i]).lower() == str(test_target[i]).lower():
             correct +=1
 
     accuracy =  (correct / float(total)) * 100
@@ -324,19 +307,10 @@ def getCleanTweets(data_file):
 if __name__=='__main__':
     REMOVESTPWORDSFLAG = False
     CROSSVALIDFLAG = True
-    NGRAMSFLAG = True
+    NGRAMSFLAG = False
 
     if CROSSVALIDFLAG:
-        data_file = 'data/gop/august/august_full_form.csv'
+        data_file = 'data/gop/august/august_candidates_form.csv'
         cleanTweets = getCleanTweets(data_file)
         random.shuffle(cleanTweets)
-        cross_validation(cleanTweets, NaiveBayes)
-
-    else:
-        train_file = 'data/gop/august/august_full_form.csv'
-        test_file = 'data/gop/march/combined_sample_unique_form.csv'
-
-        trainTweets = getCleanTweets(train_file)
-        testTweets = getCleanTweets(test_file)
-
-        NaiveBayes(trainTweets, testTweets)
+        cross_validation(cleanTweets, classifyAlgo)
