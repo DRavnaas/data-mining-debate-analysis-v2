@@ -7,6 +7,7 @@ from nltk.collocations import BigramCollocationFinder
 from nltk.metrics import BigramAssocMeasures
 from sklearn.naive_bayes import GaussianNB
 from sklearn.naive_bayes import BernoulliNB
+from sklearn.naive_bayes import MultinomialNB
 
 from sklearn.linear_model import LogisticRegression
 
@@ -66,7 +67,7 @@ def getStopWordList(stopWordListFileName):
 
 def removeStopWords(words):
     featureVector = []
-    stopWords = getStopWordList('data/feature_list/stopwords.txt')
+    stopWords = getStopWordList('../data/gop/stopwords.txt')
     for w in words:
         val = re.search(r"^[a-zA-Z][a-zA-Z0-9]*[a-zA-Z]+[a-zA-Z0-9]*$", w)
         #ignore if it is a stopWord
@@ -163,31 +164,31 @@ def extract_features(tweet):
  #end
 
 def getTotalCount(trainSet):
-    totalCount = {'|Positive|':0, '|Negative|':0,'|Neutral|':0}
+    totalCount = {'|positive|':0, '|negative|':0,'|neutral|':0}
     for each in trainSet:
         totalCount[each[1]] += 1
-    return totalCount['|Positive|'], totalCount['|Negative|'], totalCount['|Neutral|']
+    return totalCount['|positive|'], totalCount['|negative|'], totalCount['|neutral|']
 
 
 def selectionFunc2(feature_count,total_pos_count,total_neg_count,total_neu_count):
     #              pos,neg,neu
     # not contain
     # contain
-    feature_count={'|Positive|':feature_count[0], '|Negative|':feature_count[1],'|Neutral|':feature_count[2]}
+    feature_count={'|positive|':feature_count[0], '|negative|':feature_count[1],'|neutral|':feature_count[2]}
     totalData = total_pos_count+total_neg_count+total_neu_count
-    pt = (feature_count['|Positive|'] + feature_count['|Negative|'] + feature_count['|Neutral|'])*1.0/totalData
+    pt = (feature_count['|positive|'] + feature_count['|negative|'] + feature_count['|neutral|'])*1.0/totalData
     p_not_t = 1-pt
     p_pos = total_pos_count * 1.0 / totalData
     p_neg = total_neg_count * 1.0 / totalData
     p_neu = total_neu_count * 1.0 / totalData
     N = [[0,0],[0,0],[0,0]]
     E = [[0,0],[0,0],[0,0]]
-    N[0][0] =  total_pos_count - feature_count['|Positive|']
-    N[0][1] = feature_count['|Positive|']
-    N[1][0] = total_neg_count - feature_count['|Negative|']
-    N[1][1] = feature_count['|Negative|']
-    N[2][0] = total_neu_count - feature_count['|Neutral|']
-    N[2][1] = feature_count['|Neutral|']
+    N[0][0] =  total_pos_count - feature_count['|positive|']
+    N[0][1] = feature_count['|positive|']
+    N[1][0] = total_neg_count - feature_count['|negative|']
+    N[1][1] = feature_count['|negative|']
+    N[2][0] = total_neu_count - feature_count['|neutral|']
+    N[2][1] = feature_count['|neutral|']
     E[0][0] = totalData*p_pos*p_not_t
     E[0][1] = totalData * p_pos * pt
     E[1][0] = totalData * p_neg * p_not_t
@@ -205,11 +206,11 @@ def createFeatureDict(trainSet, featureList):
     feature_dict = dict([(featureList[i], [0, 0, 0]) for i in range(0, len(featureList))])
     for each in trainSet:
         tweetTokens = each[0]
-        if each[1] == '|Positive|':
+        if each[1] == '|positive|':
             y_idx =0
-        elif each[1] == '|Negative|':
+        elif each[1] == '|negative|':
             y_idx =1
-        elif each[1] == '|Neutral|':
+        elif each[1] == '|neutral|':
             y_idx =2
         for word in tweetTokens:
             feature_dict[word][y_idx] += 1
@@ -248,8 +249,10 @@ def selectFeatures(trainSet, featureList):
 
 
 def classifyAlgo(trainSet, testSet):
+    global DROP_NEUTRAL
     global FEATURELIST
     global NGRAMSFLAG
+
     FEATURELIST = []
     tweets= []
     for row in trainSet:
@@ -275,7 +278,9 @@ def classifyAlgo(trainSet, testSet):
         int_i += 1
     #model = LogisticRegression()
     #model = GaussianNB()
-    model  = BernoulliNB()
+    #model  = BernoulliNB()
+    model = MultinomialNB()
+
     model.fit(train_data, train_target)
     test_data = []
     test_target = []
@@ -287,10 +292,18 @@ def classifyAlgo(trainSet, testSet):
 
     total = 0
     correct = 0
-    for i in range(0, len(predicted)):
-        total +=1
-        if str(predicted[i]).lower() == str(test_target[i]).lower():
-            correct +=1
+
+    if DROP_NEUTRAL:
+        for i in range(0, len(predicted)):
+            if str(predicted[i]).lower() != '|neutral|':
+                total +=1
+                if str(predicted[i]).lower() == str(test_target[i]).lower():
+                    correct +=1
+    else:
+        for i in range(0, len(predicted)):
+            total +=1
+            if str(predicted[i]).lower() == str(test_target[i]).lower():
+                correct +=1
 
     accuracy =  (correct / float(total)) * 100
 
@@ -305,12 +318,23 @@ def getCleanTweets(data_file):
     return cleanTweets
 
 if __name__=='__main__':
-    REMOVESTPWORDSFLAG = False
-    CROSSVALIDFLAG = True
+    REMOVESTPWORDSFLAG = True
+    CROSSVALIDFLAG = False
     NGRAMSFLAG = False
+    DROP_NEUTRAL = False
 
     if CROSSVALIDFLAG:
-        data_file = 'data/gop/august/august_candidates_form.csv'
+        data_file = '../data/gop/august/august_full_active_form.csv'
+
         cleanTweets = getCleanTweets(data_file)
         random.shuffle(cleanTweets)
         cross_validation(cleanTweets, classifyAlgo)
+
+    else:
+        train_file  = '../data/gop/august/august_full_active_form_manip.csv'
+        test_file   = '../data/gop/march/combined_sample_unique_quote_form.csv'
+
+        trainTweets = getCleanTweets(train_file)
+        testTweets  = getCleanTweets(test_file)
+
+        classifyAlgo(trainTweets, testTweets)

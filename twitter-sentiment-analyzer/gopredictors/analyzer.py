@@ -167,34 +167,34 @@ def getTotalCount(trainSet):
     neg_count = 0
     neu_count = 0
     for each in trainSet:
-        if each[1] == '|Positive|':
+        if each[1] == '|positive|':
             pos_count += 1
-        elif each[1] == '|Negative|':
+        elif each[1] == '|negative|':
             neg_count += 1
-        elif each[1] == '|Neutral|':
+        elif each[1] == '|neutral|':
             neu_count += 1
     print pos_count,neg_count,neu_count
     return pos_count,neg_count,neu_count
 
 def selectionFunc1(count):
-    if count['|Positive|'] == 0 or count['|Negative|'] == 0:
-        c1 = (count['|Positive|'] + 1) * 1.0 / (count['|Negative|'] + 1)
+    if count['|positive|'] == 0 or count['|negative|'] == 0:
+        c1 = (count['|positive|'] + 1) * 1.0 / (count['|negative|'] + 1)
     else:
-        c1 = count['|Positive|'] * 1.0 / count['|Negative|']
+        c1 = count['|positive|'] * 1.0 / count['|negative|']
     if c1 < 1:
         c1 = 1 / c1
 
-    if count['|Neutral|'] == 0 or count['|Negative|'] == 0:
-        c2 = (count['|Neutral|'] + 1) * 1.0 / (count['|Negative|'] + 1)
+    if count['|neutral|'] == 0 or count['|negative|'] == 0:
+        c2 = (count['|neutral|'] + 1) * 1.0 / (count['|negative|'] + 1)
     else:
-        c2 = count['|Neutral|'] * 1.0 / count['|Negative|']
+        c2 = count['|neutral|'] * 1.0 / count['|negative|']
     if c2 < 1:
         c2 = 1 / c2
 
-    if count['|Neutral|'] == 0 or count['|Positive|'] == 0:
-        c3 = (count['|Neutral|'] + 1) * 1.0 / (count['|Positive|'] + 1)
+    if count['|neutral|'] == 0 or count['|positive|'] == 0:
+        c3 = (count['|neutral|'] + 1) * 1.0 / (count['|positive|'] + 1)
     else:
-        c3 = count['|Neutral|'] * 1.0 / count['|Positive|']
+        c3 = count['|neutral|'] * 1.0 / count['|positive|']
     if c3 < 1:
         c3 = 1 / c3
 
@@ -204,21 +204,21 @@ def selectionFunc2(feature_count,total_pos_count,total_neg_count,total_neu_count
     #              pos,neg,neu
     # not contain
     # contain
-    feature_count={'|Positive|':feature_count[0], '|Negative|':feature_count[1],'|Neutral|':feature_count[2]}
+    feature_count={'|positive|':feature_count[0], '|negative|':feature_count[1],'|neutral|':feature_count[2]}
     totalData = total_pos_count+total_neg_count+total_neu_count
-    pt = (feature_count['|Positive|'] + feature_count['|Negative|'] + feature_count['|Neutral|'])*1.0/totalData
+    pt = (feature_count['|positive|'] + feature_count['|negative|'] + feature_count['|neutral|'])*1.0/totalData
     p_not_t = 1-pt
     p_pos = total_pos_count * 1.0 / totalData
     p_neg = total_neg_count * 1.0 / totalData
     p_neu = total_neu_count * 1.0 / totalData
     N = [[0,0],[0,0],[0,0]]
     E = [[0,0],[0,0],[0,0]]
-    N[0][0] =  total_pos_count - feature_count['|Positive|']
-    N[0][1] = feature_count['|Positive|']
-    N[1][0] = total_neg_count - feature_count['|Negative|']
-    N[1][1] = feature_count['|Negative|']
-    N[2][0] = total_neu_count - feature_count['|Neutral|']
-    N[2][1] = feature_count['|Neutral|']
+    N[0][0] =  total_pos_count - feature_count['|positive|']
+    N[0][1] = feature_count['|positive|']
+    N[1][0] = total_neg_count - feature_count['|negative|']
+    N[1][1] = feature_count['|negative|']
+    N[2][0] = total_neu_count - feature_count['|neutral|']
+    N[2][1] = feature_count['|neutral|']
     E[0][0] = totalData*p_pos*p_not_t
     E[0][1] = totalData * p_pos * pt
     E[1][0] = totalData * p_neg * p_not_t
@@ -234,19 +234,20 @@ def selectionFunc2(feature_count,total_pos_count,total_neg_count,total_neu_count
 def createFeatureDict(trainSet, featureList):
     global NGRAMSFLAG
     feature_dict = dict([(featureList[i], [0, 0, 0]) for i in range(0, len(featureList))])
+
     for each in trainSet:
         tweetTokens = each[0]
-        if each[1] == '|Positive|':
+        if each[1] == '|positive|':
             y_idx =0
-        elif each[1] == '|Negative|':
+        elif each[1] == '|negative|':
             y_idx =1
-        elif each[1] == '|Neutral|':
+        elif each[1] == '|neutral|':
             y_idx =2
         for word in tweetTokens:
             feature_dict[word][y_idx] += 1
         if NGRAMSFLAG == True:
             bigram_finder = BigramCollocationFinder.from_words(tweetTokens)
-            bigrams = bigram_finder.nbest(BigramAssocMeasures.pmi, n=20)
+            bigrams = bigram_finder.nbest(BigramAssocMeasures.pmi, n=14)
             for bg in bigrams:
                 feature_dict[bg][y_idx] += 1
     return feature_dict
@@ -269,11 +270,11 @@ def selectFeatures(trainSet, featureList):
     topN = 0
     for i in range(0,len(sortedList)):
         if sortedList[i][1] > 1:
-            print sortedList[i]
+            #print sortedList[i]
             topN+=1
         else:
             break
-    topN = 15000
+    topN = 5000
     return [sortedList[i][0] for i in range(0,topN)]
 
 
@@ -323,7 +324,7 @@ def getCleanTweets(data_file):
 
 if __name__=='__main__':
     REMOVESTPWORDSFLAG = False
-    CROSSVALIDFLAG = True
+    CROSSVALIDFLAG = False
     NGRAMSFLAG = True
 
     if CROSSVALIDFLAG:
