@@ -3,6 +3,12 @@ library(caret)
 library(RWeka)
 library(tm)
 
+# wordcloud example: has info on exploring terms
+#http://faculty.washington.edu/jwilker/CAP/R_Sample_Script.R
+
+# cleaning tips
+#https://sites.google.com/site/miningtwitter/questions/talking-about/given-users
+
 # Drop neutral labels, just train/test o on positive/negative
 tryAugNoNeutral <- function(verbose=FALSE, doJustOneFold=TRUE)
 {
@@ -116,28 +122,41 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
       
       corpus <- Corpus(VectorSource(curFold$text))
     
+      # do a variety of transformations that are intended to 
+      # separate/normalize words
       toSpace <- content_transformer(function(x,pattern)
         gsub(pattern," ", x))
       
-      # August data has this one odd charater for truncation
-      # Also, want to force certain word separators to a space
-      # so we extract words on either side
-      #corpus <- tm_map(corpus,toSpace,".")
+      removeIt <- content_transformer(function(x, pattern) 
+        gsub(pattern, "", x))
+      
+      # Force certain word separators to a space
+      # so we can extract words on either side
+ 
       corpus <- tm_map(corpus,toSpace, "\n")
       corpus <- tm_map(corpus,toSpace,"\t")
       corpus <- tm_map(corpus,toSpace,"\r")
-      corpus <- tm_map(corpus, toSpace, "RT ")
-      #corpus <- tm_map(corpus,toSpace,".#")
-      #corpus <- tm_map(corpus,toSpace,".@")
+      corpus <- tm_map(corpus, removeIt, "RT @")
+
+      # Turn the ... character into a space for
+      # word separation
+      corpus <- tm_map(corpus, toSpace, " .")
+      corpus <- tm_map(corpus, toSpace, ". ")
       
-      # now collapse whitespace and remove punc
+      # Collapse whitespace and remove punc & numbers
       corpus <- tm_map(corpus, removePunctuation)
       
       corpus <- tm_map(corpus, stripWhitespace)
     
       corpus <- tm_map(corpus, removeNumbers)
     
-
+      # Remove links (assumed to be relatively unique)
+      corpus <- tm_map(corpus, removeIt, "http\\w+")
+      
+      # Remove any word at the end of the string that 
+      # ends with the truncation character
+      corpus <- tm_map(corpus,removeIt,"\\s*\\w*\\.$")
+      
       # You can examine what this did to any tweet like so:
       #as.character(as.character(corpus[[4]]))
       
@@ -147,7 +166,12 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
                                            weighting=weightTfIdf, 
                                            tokenize = xgramTokenizer))
 
-      # docTerms <- removeSparseTerms(docTerms, sparse=.97)
+      docTerms <- removeSparseTerms(docTerms, sparse=0.9999)
+      
+      if (verbose == TRUE)
+      {
+        print(docTerms)
+      }
       # inspect(docTerms[1:3, 20:30])
       # findFreqTerms(docTerms,2)
     }
@@ -212,8 +236,8 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
       }
     }
 
-    print(cat("  Fold accuracy: ", accuracyForFold.maxEnt, " maxent, ", accuracyForFold.svm, " svm ",
-              accuracyForFold.glmnet, " glmnet "))
+    print(cat("  Fold accuracy: maxent=", accuracyForFold.maxEnt, ", svm=", accuracyForFold.svm, ", glmnet=",
+              accuracyForFold.glmnet, " "))
 
     analytics = create_analytics(container, results)
     
