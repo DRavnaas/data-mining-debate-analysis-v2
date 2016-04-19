@@ -3,18 +3,33 @@ library(caret)
 library(RWeka)
 library(tm)
 
-tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE)
+# Drop neutral labels, just train/test o on positive/negative
+tryAugNoNeutral <- function(verbose=FALSE, doJustOneFold=TRUE)
 {
+  # This file is in github: 
+  # https://github.com/yogimiraje/data-mining-debate-analysis/tree/master/R
+  print('Reading in august tweets')
+  sentiment <-
+    read.csv(
+      "c:\\users\\doylerav\\onedrive\\cs6220\\project\\SentimentforR.csv",
+      header = TRUE
+    )
   
-  rebuildDocTerms <- FALSE
+  sentAugNoNeutral <- sentiment[sentimentAug$sentiment!="Neutral",]
   
+  tryAugTweetsRun(sentiment=sentAugNoNeutral, verbose, doJustOneFold)
+}
+
+tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
+{
+
   # Read in data if necessary
-  if (is.null(sentimentAug) || dim(sentimentAug)[1] != 13871)
+  if (is.null(sentiment))
   {
     # This file is in github: 
     # https://github.com/yogimiraje/data-mining-debate-analysis/tree/master/R
     print('Reading in august tweets')
-    sentimentAug <-
+    sentiment <-
       read.csv(
         "c:\\users\\doylerav\\onedrive\\cs6220\\project\\SentimentforR.csv",
         header = TRUE
@@ -28,22 +43,24 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
   # build folds of the data for cross validation
   # the id happens to be a row number
   # TODO: make sure we have this column for march csv for R
-  fold0 <- sentimentAug[sentimentAug$id %% 5 == 0, ]
-  fold1 <- sentimentAug[sentimentAug$id %% 5 == 1, ]
-  fold2 <- sentimentAug[sentimentAug$id %% 5 == 2, ]
-  fold3 <- sentimentAug[sentimentAug$id %% 5 == 3, ]
-  fold4 <- sentimentAug[sentimentAug$id %% 5 == 4, ]
+  fold0 <- sentiment[sentiment$id %% 5 == 0, ]
+  fold1 <- sentiment[sentiment$id %% 5 == 1, ]
+  fold2 <- sentiment[sentiment$id %% 5 == 2, ]
+  fold3 <- sentiment[sentiment$id %% 5 == 3, ]
+  fold4 <- sentiment[sentiment$id %% 5 == 4, ]
   
   # Build containers where the last rows are the test fold
   #cv1All <- rbind(fold0, fold1, fold2, fold3, fold4)
-  cv1All <- sentimentAug
+  cv1All <- sentiment
   cv2All <- rbind(fold1, fold2, fold3, fold4, fold0)
   cv3All <- rbind(fold2, fold3, fold4, fold0, fold1)
   cv4All <- rbind(fold3, fold4, fold0, fold1, fold2)
   cv5All <- rbind(fold4, fold0, fold1, fold2, fold3)
   
-  trainRows <- 1:11097
-  testRows <-    11098:13871
+  numRows <- as.matrix(dim(sentiment))[1,1]
+  endTrain <- as.integer(.8 * numRows)
+  trainRows <- 1:endTrain
+  testRows <-    (endTrain+1):numRows
   
   accSumAcrossFolds.maxEnt <- 0
   accSumAcrossFolds.svm <- 0
@@ -60,7 +77,8 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
     # Create matrix doesn't work with ngram > 1
     useCreateMatrix = FALSE
   }
-  
+
+
   for (curFold in folds)
   {
     # build the data to specify response variable, training set, testing set.
@@ -123,7 +141,9 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
     
     # For each model, train and get test results and accuracy
     # You can lump these together to run as an ensemble, but they take a while to run.
-    algos = c("MAXENT", "GLMNET", "SVM")  #SVM takes a while, the other two are pretty quick
+    #algos = c("GLMNET", "MAXENT") # this runs relatively quick (though SVM is usually better)
+    #algos = c("GLMNET", "SVM")  #SVM and GLMNET have the edge usually over MAXENT for accuracy
+    algos = c("MAXENT", "GLMNET", "SVM")
     
     cat("Running ", algos, "...")
     
@@ -131,6 +151,7 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
     results = classify_models(container, models)
     
     # Get maxEnt results for this fold
+    accuracyForFold.maxEnt = "NA"
     accuracyForFold.maxEnt <-
       recall_accuracy(as.numeric(as.factor(curFold$sentiment[testRows])), results[, "MAXENTROPY_LABEL"])
     accSumAcrossFolds.maxEnt <- accSumAcrossFolds.maxEnt + accuracyForFold.maxEnt
@@ -171,10 +192,21 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
     print(cat("  Fold accuracy: ", accuracyForFold.maxEnt, " maxent, ", accuracyForFold.svm, " svm ",
               accuracyForFold.glmnet, " glmnet "))
 
+    analytics = create_analytics(container, results)
+    
     if (length(algos) > 1)
     {
       print(analytics@ensemble_summary)
     }
+    
+    # Idea - keep just sum of ensemble summary matrix (k algos x 2)
+    # Save as files the various per fold summaries?
+    results_ensemble <- as.matrix(analytics@ensemble_summary)
+    results_document <- as.matrix(analytics@document_summary)
+    results_label <- as.matrix(analytics@label_summary)
+    results_algorithm <- as.matrix(analytics@algorithm_summary)
+
+    #write.csv("")
     
     if (doJustOneFold == TRUE)
     {
@@ -184,14 +216,13 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
   }
 
   # model summary - work out how to use/aggregate this for 5 folds?
-
   
   if (verbose == TRUE && length(algos) > 1)
   {
-    print("Analytics for last fold: ")
-    analytics = create_analytics(container, results)
+    #print("Analytics for last fold: ")
+    #analytics = create_analytics(container, results)
     #print(summary(analytics))
-    print(head(analytics@document_summary))
+    #print(head(analytics@document_summary))
 
   }
     
@@ -207,6 +238,8 @@ tryAugTweetsRun <- function(sentimentAug=NULL, verbose=FALSE, doJustOneFold=TRUE
   
   print(cat("Mean accuracy across folds, svm:    ", meanAcc.svm, " "))
   
+  # return the list of fold analytics
+  #perFoldAnalytics
 }
 
 buildTermMatrix <- function(trainTweets, testTweets)
