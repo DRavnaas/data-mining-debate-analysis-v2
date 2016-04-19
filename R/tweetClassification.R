@@ -8,7 +8,7 @@ tryAugNoNeutral <- function(verbose=FALSE, doJustOneFold=TRUE)
 {
   # This file is in github: 
   # https://github.com/yogimiraje/data-mining-debate-analysis/tree/master/R
-  print('Reading in august tweets')
+  print('Reading in august tweets (and removing neutrals)')
   sentiment <-
     read.csv(
       "c:\\users\\doylerav\\onedrive\\cs6220\\project\\SentimentforR.csv",
@@ -28,7 +28,7 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
   {
     # This file is in github: 
     # https://github.com/yogimiraje/data-mining-debate-analysis/tree/master/R
-    print('Reading in august tweets')
+    print('Reading in august tweets (including neutrals)')
     sentiment <-
       read.csv(
         "c:\\users\\doylerav\\onedrive\\cs6220\\project\\SentimentforR.csv",
@@ -103,6 +103,9 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
         toLower = TRUE,
         removePunctuation = TRUE
       )
+      
+      # Want to see what the terms ended up being?
+      # inspect(docTerms[1,])
     }
     if (useCreateMatrix == FALSE)
     {
@@ -112,22 +115,42 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
       cat("Creating term matrix2... ")
       
       corpus <- Corpus(VectorSource(curFold$text))
-     
-      corpus <- tm_map(corpus, removePunctuation)
     
+      toSpace <- content_transformer(function(x,pattern)
+        gsub(pattern," ", x))
+      
+      # August data has this one odd charater for truncation
+      # Also, want to force certain word separators to a space
+      # so we extract words on either side
+      #corpus <- tm_map(corpus,toSpace,".")
+      corpus <- tm_map(corpus,toSpace, "\n")
+      corpus <- tm_map(corpus,toSpace,"\t")
+      corpus <- tm_map(corpus,toSpace,"\r")
+      corpus <- tm_map(corpus, toSpace, "RT ")
+      #corpus <- tm_map(corpus,toSpace,".#")
+      #corpus <- tm_map(corpus,toSpace,".@")
+      
+      # now collapse whitespace and remove punc
+      corpus <- tm_map(corpus, removePunctuation)
+      
       corpus <- tm_map(corpus, stripWhitespace)
     
       corpus <- tm_map(corpus, removeNumbers)
     
+
+      # You can examine what this did to any tweet like so:
+      #as.character(as.character(corpus[[4]]))
+      
       xgramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = nGramLength, max = nGramLength))
       docTerms <- DocumentTermMatrix(corpus,
-                              control=list(weighting=weightTfIdf, 
+                              control=list(tolower=tolower,
+                                           weighting=weightTfIdf, 
                                            tokenize = xgramTokenizer))
 
-    }  
-  
-    # Want to see what the terms ended up being?
-    # inspect(docTerms[1,])
+      # docTerms <- removeSparseTerms(docTerms, sparse=.97)
+      # inspect(docTerms[1:3, 20:30])
+      # findFreqTerms(docTerms,2)
+    }
     
     # build container for this fold = train versus test rows and label
     container = create_container(
@@ -156,7 +179,7 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
       recall_accuracy(as.numeric(as.factor(curFold$sentiment[testRows])), results[, "MAXENTROPY_LABEL"])
     accSumAcrossFolds.maxEnt <- accSumAcrossFolds.maxEnt + accuracyForFold.maxEnt
     
-    if (verbose)
+    if (verbose == TRUE)
     {
       confusionMatrix(results$MAXENTROPY_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
     }
@@ -169,7 +192,7 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
         recall_accuracy(as.numeric(as.factor(curFold$sentiment[testRows])), results$GLMNET_LABEL)
       accSumAcrossFolds.glmnet <- accSumAcrossFolds.glmnet + accuracyForFold.glmnet
       
-      if (verbose)
+      if (verbose == TRUE)
       {
         confusionMatrix(results$GLMNET_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
       }
@@ -183,7 +206,7 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
         recall_accuracy(as.numeric(as.factor(curFold$sentiment[testRows])), results[, "SVM_LABEL"])
       accSumAcrossFolds.svm <- accSumAcrossFolds.svm + accuracyForFold.svm
     
-      if (verbose)
+      if (verbose == TRUE)
       {
         confusionMatrix(results$SVM_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
       }
