@@ -157,7 +157,7 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
       # ends with the truncation character
       corpus <- tm_map(corpus,removeIt,"\\s*\\w*\\.$")
       
-      # You can examine what this did to any tweet like so:
+      # You can examine the resulting tweet text like so:
       #as.character(as.character(corpus[[4]]))
       
       xgramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = nGramLength, max = nGramLength))
@@ -166,12 +166,14 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
                                            weighting=weightTfIdf, 
                                            tokenize = xgramTokenizer))
 
+      # Take out extremely sparse terms to reduce term matrix
       docTerms <- removeSparseTerms(docTerms, sparse=0.9999)
       
       if (verbose == TRUE)
       {
         print(docTerms)
       }
+      
       # inspect(docTerms[1:3, 20:30])
       # findFreqTerms(docTerms,2)
     }
