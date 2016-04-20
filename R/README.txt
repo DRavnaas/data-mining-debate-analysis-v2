@@ -30,7 +30,7 @@ THE QUICK WAY (use a previously trained classifier):
 setwd("C:/gopfolder/R")  
 
 # Load the code from the working directory
-source('tweetClassification.R')
+source('C:/gopfolder/R/tweetClassification.R', encoding = 'UTF-8')
 
 
 
