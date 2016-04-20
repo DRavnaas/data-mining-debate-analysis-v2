@@ -157,6 +157,7 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
     
     # Turn the ... character into a space for
     # word separation - 
+    # BE SURE TO SAVE THIS R FILE AS UTF-8!!
     corpus <- tm_map(corpus, toSpace, "…")
     
     # Collapse whitespace and remove punc & numbers
