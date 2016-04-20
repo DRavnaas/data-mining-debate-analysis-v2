@@ -1,5 +1,7 @@
 import re
 import csv
+from sklearn import svm
+from sklearn.ensemble import VotingClassifier
 
 import random
 
@@ -8,8 +10,7 @@ from nltk.metrics import BigramAssocMeasures
 from sklearn.naive_bayes import GaussianNB
 from sklearn.naive_bayes import BernoulliNB
 from sklearn.naive_bayes import MultinomialNB
-from sklearn import svm
-
+    
 from sklearn.linear_model import LogisticRegression
 
 #gloable for feature extraction
@@ -277,20 +278,29 @@ def classifyAlgo(trainSet, testSet):
         train_data.append(extract_features(train_point[0]))
         train_target.append(train_point[1])
         int_i += 1
-    #model = LogisticRegression()
+    clf1 = LogisticRegression()
+    clf2 =  MultinomialNB()
+    clf3 =  svm.SVC(decision_function_shape='ovo')
+
+    eclf = VotingClassifier(estimators=[('lr', clf1), ('mnb', clf2), ('gnb', clf3)], voting='hard')
+
+    clf1 =  clf1.fit(train_data,train_target)
+    clf2 =  clf1.fit(train_data,train_target)
+    clf3 =  clf3.fit(train_data,train_target)
+
+    eclf = eclf.fit(train_data,train_target)
+
     #model = GaussianNB()
     #model  = BernoulliNB()
     #model = MultinomialNB()
-    model =  svm.SVC(decision_function_shape='ovo')
 
-    model.fit(train_data, train_target)
     test_data = []
     test_target = []
     for test_point in testSet:
         test_data.append(extract_features(test_point[0]))
         test_target.append(test_point[1])
 
-    predicted = model.predict(test_data)
+    predicted = eclf.predict(test_data)
 
     total = 0
     correct = 0
@@ -323,10 +333,10 @@ if __name__=='__main__':
     REMOVESTPWORDSFLAG = True
     CROSSVALIDFLAG = True
     NGRAMSFLAG = False
-    DROP_NEUTRAL = True
+    DROP_NEUTRAL = False
 
     if CROSSVALIDFLAG:
-        data_file = '../data/gop/august/august_full_active_form.csv'
+        data_file = '../data/gop/august/august_full_active.csv'
 
         cleanTweets = getCleanTweets(data_file)
         random.shuffle(cleanTweets)
