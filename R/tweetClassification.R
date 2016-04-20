@@ -4,28 +4,47 @@ library(RWeka)
 library(tm)
 library(e1071)
 
-# TODO: try on "fresh" machine to ensure readme is right
-# cut methods up a bit more
+#Finish cleaning up AugAndMarchLabeled in excel
+#tweet 836 - quotes? How is that processed.
+# case issue
+# what to do with blanks in quote sentiment
+
+# TODO: try on "fresh" machine to ensure readme is right (use R version 3.2.4?)
+# method - trainAndEvaluate - August only or August and March
+#        - trainAndPredict - trains on full set, then makes predictions
+#        - predictFromTrainedModel - takes a trained model and docTermMatrix and makes predictions
 # add march capability
-# add relative path
+# save algorithm probabilities and run through SVM for prediction, save trained svm model
+
 # TODO: make sure we have id column for march csv for R
-# Also run through tweets in August and replace /r/n in Aug with space
-# Change tryAugNoNeutral() to trainAndTestNoNeutral()
-# Add predictFromTrainedClassifier()
 
 
 # see github for various data files
 # https://github.com/yogimiraje/data-mining-debate-analysis/tree/master/R
 
-# wordcloud example: has info on exploring terms
+# Primary references used for transforming tweets for R:
+# 
 #http://faculty.washington.edu/jwilker/CAP/R_Sample_Script.R
-
-# cleaning tips
 #https://sites.google.com/site/miningtwitter/questions/talking-about/given-users
 
-# Drop neutral labels, just train/test o on positive/negative
+# Train and evaluate an ensemble 
+# optionally does 5 fold cross validation and saves the trained model and results
+trainAndEvaluate <- function(csvPath="AugSentiment.csv", 
+                             verbose=FALSE, 
+                             doJustOneFold=FALSE,
+                             saveToFolder=NULL)
 {
-  print('Reading in august tweets (and removing neutrals)')
+  tryAugNoNeutral(csvPath, verbose, doJustOneFold, saveToFolder)
+}
+
+
+# Drop neutral labels, just train/test on positive/negative
+tryAugNoNeutral <- function(csvPath="AugSentiment.csv", 
+                            verbose=FALSE, 
+                            doJustOneFold=FALSE,
+                            saveToFolder=NULL)
+{
+  print('Reading in tweets (and removing neutrals)')
   sentiment <-
     read.csv(
       csvPath,
@@ -34,19 +53,23 @@ library(e1071)
   
   sentAugNoNeutral <- sentiment[sentiment$sentiment!="Neutral",]
   
-  tryAugTweetsRun(sentiment=sentAugNoNeutral, verbose, doJustOneFold)
+  tryAugTweetsRun(sentiment=sentAugNoNeutral, verbose, doJustOneFold, saveToFolder)
 }
 
+tryAugTweetsWithNeutral<- function(csvPath="AugSentiment.csv", 
+                                   verbose=FALSE, 
+                                   doJustOneFold=TRUE,
+                                   saveToFolder=NULL)
 {
 
-  print('Reading in august tweets (with neutrals)')
+  print('Reading in tweets (with neutrals)')
   sentiment <-
     read.csv(
       csvPath,
       header = TRUE
     )
   
-  tryAugTweetsRun(sentiment=sentAugNoNeutral, verbose, doJustOneFold)
+  tryAugTweetsRun(sentiment=sentAugNoNeutral, verbose, doJustOneFold, saveToFolder)
 }
 
 buildFolds <- function(sentiment)
@@ -175,7 +198,11 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
   docTerms
 }
 
-tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
+# Main helper function to train and evaluate input tweets
+tryAugTweetsRun <- function(sentiment=NULL, 
+                            verbose=FALSE, 
+                            doJustOneFold=TRUE, 
+                            saveToFolder=NULL)
 {
   if (verbose == TRUE)
   {
@@ -237,7 +264,9 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
     
     if (verbose == TRUE)
     {
-      confusionMatrix(results$MAXENTROPY_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
+      confusionDetails <- confusionMatrix(results$MAXENTROPY_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
+      print("  Confusion matrix:")
+      print(confusionDetails)
     }
  
     accuracyForFold.glmnet = "NA"
@@ -250,7 +279,10 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
       
       if (verbose == TRUE)
       {
-        confusionMatrix(results$GLMNET_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
+        confusionDetails <- confusionMatrix(results$GLMNET_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
+        print("  Confusion matrix:")
+        print(confusionDetails)
+        
       }
     }
        
@@ -282,31 +314,48 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
       print(analytics@ensemble_summary)
     }
     
-    # Idea - keep just sum of ensemble summary matrix (k algos x 2)
-    # Save as files the various per fold summaries?
-    results_ensemble <- as.matrix(analytics@ensemble_summary)
-    results_document <- as.matrix(analytics@document_summary)
-    results_label <- as.matrix(analytics@label_summary)
-    results_algorithm <- as.matrix(analytics@algorithm_summary)
-
-    #write.csv("")
+    # Save results to the file system if specified
+    if (!is.null(saveToFolder) && length(saveToFolder) > 0)
+    {
+      print("Saving model and results...")
+      
+      if (!dir.exists(saveToFolder))
+      {
+        dir.create(saveToFolder)
+      }
+      
+      # Save results if requested
+      if (doJustOneFold == FALSE)
+      {
+        analyticsFilePath = paste(saveToFolder, "\\", "analytics_", foldNum, ".RData", sep="" )
+        trainedModelAndResultsPath = paste(saveToFolder, "\\", "modelsAndLabels_", foldNum, ".RData", sep="")
+      }
+      else {
+        analyticsFilePath <- paste(saveToFolder, "\\", "analytics.RData", sep="" )
+        trainedModelAndResultsPath = paste(saveToFolder, "\\", "modelsAndLabels.RData", sep="")
+      }
+      
+      save(analytics, results, file = analyticsFilePath)
+      save(models, container, file = trainedModelAndResultsPath)
+    }
     
     if (doJustOneFold == TRUE)
     {
       # Useful when testing out some new code.
+      print("doJustOneFold == TRUE, skipping other 4 folds")
       break
     }
   }
 
-  # model summary - work out how to use/aggregate this for 5 folds?
+  # model summary - print out more details when we are running 
+  # one algorithm and one fold (and asked for verbose output)
   
-  if (verbose == TRUE && length(algos) > 1)
+  if (verbose == TRUE && length(algos) == 1 && doJustOneFold)
   {
-    #print("Analytics for last fold: ")
+    #print("Analytics: ")
     #analytics = create_analytics(container, results)
     #print(summary(analytics))
     #print(head(analytics@document_summary))
-
   }
     
   meanAcc.maxEnt <- accSumAcrossFolds.maxEnt / foldNum
@@ -323,12 +372,61 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
   
   ensembleResults <- ensembleResults / foldNum
   
-  print(ensembleResults)
+  if (doJustOneFold == FALSE)
+  {
+    print(ensembleResults)
+  }
   
   if (verbose == TRUE)
   {
     print(Sys.time())
   }
+  
+  # save off trained classifier, container, labels and results
+  if (!is.null(saveToFolder) && length(saveToFolder) > 0)
+  {
+  }
+
+}
+
+
+trainAndPredict <- function(sentimentTrain=NULL, predictSet=NULL, verbose=FALSE)
+{
+  if (verbose == TRUE)
+  {
+    print(Sys.time())
+  }
+  
+  numRows <- as.matrix(dim(sentimentTrain))[1,1]
+  endTrain <- as.integer(numRows)
+  trainRows <- 1:endTrain
+  testRows <-    (endTrain+1):(endTrain+dim(predictRows[1,1])+1)
+  
+  curFold <- c(sentimentTrain$text, predictSet$text)
+    
+  docTerms <- buildDocTermMatrix(curFold, verbose)
+    
+  # build container for this fold = train versus test rows and label
+  container = create_container(
+      docTerms,
+      as.numeric(as.factor(curFold$sentiment)),
+      trainSize = trainRows,
+      testSize = testRows,
+      virgin = TRUE
+    )
+    
+  # For each model, train and get test results and accuracy
+  # You can lump these together to run as an ensemble, but they take a while to run.
+  #algos = c("GLMNET", "MAXENT") # this runs relatively quick (though SVM is usually better)
+  #algos = c("GLMNET", "SVM")  #SVM and GLMNET have the edge usually over MAXENT for accuracy
+  algos = c("MAXENT", "GLMNET", "SVM")
+    
+  cat("Running ", algos, "...")
+    
+  models = train_models(container, algorithms = algos)
+  results = classify_models(container, models)
+ 
+  results
   
   # return the list of fold analytics
   #perFoldAnalytics
