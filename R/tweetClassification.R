@@ -2,6 +2,20 @@ library(RTextTools)
 library(caret)
 library(RWeka)
 library(tm)
+library(e1071)
+
+# TODO: try on "fresh" machine to ensure readme is right
+# cut methods up a bit more
+# add march capability
+# add relative path
+# TODO: make sure we have id column for march csv for R
+# Also run through tweets in August and replace /r/n in Aug with space
+# Change tryAugNoNeutral() to trainAndTestNoNeutral()
+# Add predictFromTrainedClassifier()
+
+
+# see github for various data files
+# https://github.com/yogimiraje/data-mining-debate-analysis/tree/master/R
 
 # wordcloud example: has info on exploring terms
 #http://faculty.washington.edu/jwilker/CAP/R_Sample_Script.R
@@ -10,45 +24,35 @@ library(tm)
 #https://sites.google.com/site/miningtwitter/questions/talking-about/given-users
 
 # Drop neutral labels, just train/test o on positive/negative
-tryAugNoNeutral <- function(verbose=FALSE, doJustOneFold=TRUE)
 {
-  # This file is in github: 
-  # https://github.com/yogimiraje/data-mining-debate-analysis/tree/master/R
   print('Reading in august tweets (and removing neutrals)')
   sentiment <-
     read.csv(
-      "c:\\users\\doylerav\\onedrive\\cs6220\\project\\SentimentforR.csv",
+      csvPath,
       header = TRUE
     )
   
-  sentAugNoNeutral <- sentiment[sentimentAug$sentiment!="Neutral",]
+  sentAugNoNeutral <- sentiment[sentiment$sentiment!="Neutral",]
   
   tryAugTweetsRun(sentiment=sentAugNoNeutral, verbose, doJustOneFold)
 }
 
-tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
 {
 
-  # Read in data if necessary
-  if (is.null(sentiment))
-  {
-    # This file is in github: 
-    # https://github.com/yogimiraje/data-mining-debate-analysis/tree/master/R
-    print('Reading in august tweets (including neutrals)')
-    sentiment <-
-      read.csv(
-        "c:\\users\\doylerav\\onedrive\\cs6220\\project\\SentimentforR.csv",
-        header = TRUE
-      )
-    
-  }
+  print('Reading in august tweets (with neutrals)')
+  sentiment <-
+    read.csv(
+      csvPath,
+      header = TRUE
+    )
+  
+  tryAugTweetsRun(sentiment=sentAugNoNeutral, verbose, doJustOneFold)
+}
 
-  
-  print('Creating fold list')
-  
+buildFolds <- function(sentiment)
+{
   # build folds of the data for cross validation
   # the id happens to be a row number
-  # TODO: make sure we have this column for march csv for R
   fold0 <- sentiment[sentiment$id %% 5 == 0, ]
   fold1 <- sentiment[sentiment$id %% 5 == 1, ]
   fold2 <- sentiment[sentiment$id %% 5 == 2, ]
@@ -63,6 +67,126 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
   cv4All <- rbind(fold3, fold4, fold0, fold1, fold2)
   cv5All <- rbind(fold4, fold0, fold1, fold2, fold3)
   
+  folds <- list(cv1All, cv2All, cv3All, cv4All, cv5All)
+  folds
+}
+
+buildDocTermMatrix <- function(curFold, verbose=FALSE)
+{
+  nGramLength <- 1 # run 1/2/3 = unigrams
+  
+  # This toggles between two implementations of the doc term matrix builder
+  # I liked the tm version better in the end.
+  useCreateMatrix = FALSE
+  
+  if (nGramLength > 1)
+  {
+    # Create matrix doesn't work with ngram > 1
+    useCreateMatrix = FALSE
+  }
+    
+  if (useCreateMatrix ==TRUE)
+  {
+    cat("Creating term matrix (old)...")
+    
+    docTerms <- create_matrix(
+      curFold$text,
+      language = "english",
+      removeStopwords = FALSE,  # run2 = false
+      minWordLength = 3,
+      ngramLength = nGramLength,  # run 1/2/3 = unigrams
+      weighting = tm::weightTfIdf,  # run1/2 = weightTf
+      removeNumbers = TRUE,
+      stemWords = FALSE,
+      toLower = TRUE,
+      removePunctuation = TRUE
+    )
+    
+    # Want to see what the terms ended up being?
+    # inspect(docTerms[1,])
+  }
+  if (useCreateMatrix == FALSE)
+  {
+    
+    # nGramLength > 1 doesn't work, so use Weka to build term matrix.
+    # Note - need to keep this in sync with create_matrix above
+    cat("Creating term matrix... ")
+    
+    corpus <- Corpus(VectorSource(curFold$text))
+    
+    # do a variety of transformations that are intended to 
+    # separate/normalize words
+    toSpace <- content_transformer(function(x,pattern)
+      gsub(pattern," ", x))
+    
+    removeIt <- content_transformer(function(x, pattern) 
+      gsub(pattern, "", x))
+    
+    # Force certain word separators to a space
+    # so we can extract words on either side
+    
+    corpus <- tm_map(corpus,toSpace, "\n")
+    corpus <- tm_map(corpus,toSpace,"\t")
+    corpus <- tm_map(corpus,toSpace,"\r")
+    corpus <- tm_map(corpus, removeIt, "RT @")
+    
+    # Turn the ... character into a space for
+    # word separation
+    corpus <- tm_map(corpus, toSpace, " .")
+    corpus <- tm_map(corpus, toSpace, ". ")
+    
+    # Collapse whitespace and remove punc & numbers
+    corpus <- tm_map(corpus, removePunctuation)
+    
+    corpus <- tm_map(corpus, stripWhitespace)
+    
+    corpus <- tm_map(corpus, removeNumbers)
+    
+    # Remove links (assumed to be relatively unique)
+    corpus <- tm_map(corpus, removeIt, "http\\w+")
+    
+    # Remove any word at the end of the string that 
+    # ends with the truncation character
+    corpus <- tm_map(corpus,removeIt,"\\s*\\w*\\.$")
+    
+    # You can examine the resulting tweet text like so:
+    #as.character(as.character(corpus[[4]]))
+    
+    xgramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = nGramLength, max = nGramLength))
+    docTerms <- DocumentTermMatrix(corpus,
+                                   control=list(tolower=tolower,
+                                                weighting=weightTfIdf, 
+                                                tokenize = xgramTokenizer))
+    
+    # Take out extremely sparse terms to reduce term matrix
+    docTerms <- removeSparseTerms(docTerms, sparse=0.9999)
+    
+    if (verbose == TRUE)
+    {
+      print("Summary for doc term matrix:")
+      
+      print(docTerms)
+    }
+    
+    # inspect(docTerms[1:3, 20:30])
+    # findFreqTerms(docTerms,2)
+  }
+  
+  docTerms
+}
+
+tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
+{
+  if (verbose == TRUE)
+  {
+    print(Sys.time())
+  }
+  
+  print('Creating fold list')
+  
+  folds <- buildFolds(sentiment)
+  foldNum <- 0
+    
   numRows <- as.matrix(dim(sentiment))[1,1]
   endTrain <- as.integer(.8 * numRows)
   trainRows <- 1:endTrain
@@ -71,112 +195,19 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
   accSumAcrossFolds.maxEnt <- 0
   accSumAcrossFolds.svm <- 0
   accSumAcrossFolds.glmnet <- 0
+  ensembleResults <- matrix(c(0,0,0,0,0,0), nrow=3, ncol=2,
+                            dimnames = list(c("n >= 1", "n >= 2", "n >=3"),
+                                            c("mean coverage", "mean accuracy")))
   
-  folds <- list(cv1All, cv2All, cv3All, cv4All, cv5All)
-  foldNum <- 0
-  nGramLength <- 1 # run 1/2/3 = unigrams
   
-  useCreateMatrix = FALSE
-  
-  if (nGramLength > 1)
-  {
-    # Create matrix doesn't work with ngram > 1
-    useCreateMatrix = FALSE
-  }
-
-
+  # Loop through the folds of tweets
   for (curFold in folds)
   {
-    # build the data to specify response variable, training set, testing set.
-    # virgin=FALSE means has a label (TRUE = data we haven't seen/labeled)
     
     foldNum <- foldNum + 1
     cat("  Fold", foldNum, ": ")
 
-    if (useCreateMatrix ==TRUE)
-    {
-      cat("Creating term matrix1...")
-      
-      docTerms <- create_matrix(
-        curFold$text,
-        language = "english",
-        removeStopwords = FALSE,  # run2 = false
-        minWordLength = 3,
-        ngramLength = nGramLength,  # run 1/2/3 = unigrams
-        weighting = tm::weightTfIdf,  # run1/2 = weightTf
-        removeNumbers = TRUE,
-        stemWords = FALSE,
-        toLower = TRUE,
-        removePunctuation = TRUE
-      )
-      
-      # Want to see what the terms ended up being?
-      # inspect(docTerms[1,])
-    }
-    if (useCreateMatrix == FALSE)
-    {
-    
-      # nGramLength > 1 doesn't work, so use Weka to build term matrix.
-      # Note - need to keep this in sync with create_matrix above
-      cat("Creating term matrix2... ")
-      
-      corpus <- Corpus(VectorSource(curFold$text))
-    
-      # do a variety of transformations that are intended to 
-      # separate/normalize words
-      toSpace <- content_transformer(function(x,pattern)
-        gsub(pattern," ", x))
-      
-      removeIt <- content_transformer(function(x, pattern) 
-        gsub(pattern, "", x))
-      
-      # Force certain word separators to a space
-      # so we can extract words on either side
- 
-      corpus <- tm_map(corpus,toSpace, "\n")
-      corpus <- tm_map(corpus,toSpace,"\t")
-      corpus <- tm_map(corpus,toSpace,"\r")
-      corpus <- tm_map(corpus, removeIt, "RT @")
-
-      # Turn the ... character into a space for
-      # word separation
-      corpus <- tm_map(corpus, toSpace, " .")
-      corpus <- tm_map(corpus, toSpace, ". ")
-      
-      # Collapse whitespace and remove punc & numbers
-      corpus <- tm_map(corpus, removePunctuation)
-      
-      corpus <- tm_map(corpus, stripWhitespace)
-    
-      corpus <- tm_map(corpus, removeNumbers)
-    
-      # Remove links (assumed to be relatively unique)
-      corpus <- tm_map(corpus, removeIt, "http\\w+")
-      
-      # Remove any word at the end of the string that 
-      # ends with the truncation character
-      corpus <- tm_map(corpus,removeIt,"\\s*\\w*\\.$")
-      
-      # You can examine the resulting tweet text like so:
-      #as.character(as.character(corpus[[4]]))
-      
-      xgramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = nGramLength, max = nGramLength))
-      docTerms <- DocumentTermMatrix(corpus,
-                              control=list(tolower=tolower,
-                                           weighting=weightTfIdf, 
-                                           tokenize = xgramTokenizer))
-
-      # Take out extremely sparse terms to reduce term matrix
-      docTerms <- removeSparseTerms(docTerms, sparse=0.9999)
-      
-      if (verbose == TRUE)
-      {
-        print(docTerms)
-      }
-      
-      # inspect(docTerms[1:3, 20:30])
-      # findFreqTerms(docTerms,2)
-    }
+    docTerms <- buildDocTermMatrix(curFold, verbose)
     
     # build container for this fold = train versus test rows and label
     container = create_container(
@@ -186,7 +217,6 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
       testSize = testRows,
       virgin = FALSE
     )
-    
     
     # For each model, train and get test results and accuracy
     # You can lump these together to run as an ensemble, but they take a while to run.
@@ -234,7 +264,9 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
     
       if (verbose == TRUE)
       {
-        confusionMatrix(results$SVM_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
+        confusionDetails <- confusionMatrix(results$SVM_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
+        print("  Confusion matrix:")
+        print(confusionDetails)
       }
     }
 
@@ -242,6 +274,8 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
               accuracyForFold.glmnet, " "))
 
     analytics = create_analytics(container, results)
+    ensembleResults <- ensembleResults + as.matrix(analytics@ensemble_summary)
+    
     
     if (length(algos) > 1)
     {
@@ -285,64 +319,43 @@ tryAugTweetsRun <- function(sentiment=NULL, verbose=FALSE, doJustOneFold=TRUE)
 
   meanAcc.svm <- accSumAcrossFolds.svm / foldNum
   
-  print(cat("Mean accuracy across folds, svm:    ", meanAcc.svm, " "))
+  print(as.character(cat("Mean accuracy across folds, svm:    ", meanAcc.svm, " ")))
+  
+  ensembleResults <- ensembleResults / foldNum
+  
+  print(ensembleResults)
+  
+  if (verbose == TRUE)
+  {
+    print(Sys.time())
+  }
   
   # return the list of fold analytics
   #perFoldAnalytics
 }
 
-buildTermMatrix <- function(trainTweets, testTweets)
-{
-  allTweets <- rbind(trainTweets, testTweets)
-  
-  allTweetsTermMatrix = create_Matrix(
-    allTweets[, 1],
-    language = "english",
-    minDocFreq = 1,
-    maxDocFreq = Inf,
-    minWordLength = 3,
-    maxWordLength = Inf,
-    ngramLength = 1,
-    originalMatrix = NULL,
-    removeNumbers = FALSE,
-    removePunctuation = TRUE,
-    removeSparseTerms = 0,
-    removeStopwords = FALSE,
-    stemWords = FALSE,
-    stripWhitespace = TRUE,
-    toLower = TRUE
-  )
-  
-  allTweetsTermMatrix
-}
 
 tryAugTweetsNB <- function()
 {
   sentimentAug <-
     read.csv("c:\\users\\doylerav\\onedrive\\cs6220\\Sentiment.csv",
              header = TRUE)
-  
-  docTerms <-
-    create_matrix(
-      sentimentAug$text[1:100],
-      language = "english",
-      removeStopwords = TRUE,
-      removeNumbers = TRUE,
-      stemWords = FALSE
-    )
+
+  docTerms <- buildDocTermMatrix(sentimentAug)
   featureMatrix <- as.matrix(docTerms)
+
+  cat("Running Naive Bayes...")
   
-  #classifier <- naiveBayes(featureMatrix[1:90], as.factor(sentimentAug$sentiment[1:90]))
-  #predicted <- predict(classifier, featureMatrix[90:100])
-  #featureMatrix <- as.matrix(docTerms)
-  #classifier <- naiveBayes(featureMatrix[1:5000,],
-  #                         as.factor(sentimentAug$sentiment[1:5000]))
+  numRows <- as.matrix(dim(sentiment))[1,1]
+  endTrain <- as.integer(.8 * numRows)
+  trainRows <- 1:endTrain
+  testRows <-    (endTrain+1):numRows
   
-  predicted <- predict(classifier, featureMatrix[5001:6000, ])
-  predicted
-  
-  tempTable <- table(sentimentAug$sentiment[5001:6000], predicted)
+  classifier <- naiveBayes(featureMatrix[trainRows], as.factor(sentimentAug$sentiment[trainRows]))
+  predicted <- predict(classifier, featureMatrix[testRows])
+
   recallStats <-
-    recall_accuracy(sentimentAug$sentiment[5001:6000], predicted)
-  recallStats
+    recall_accuracy(sentimentAug$sentiment[testRows], predicted)
+  
+  cat("Prediction accuracy: ", recallStats)
 }
