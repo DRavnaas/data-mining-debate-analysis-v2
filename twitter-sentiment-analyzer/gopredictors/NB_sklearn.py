@@ -14,6 +14,7 @@ from sklearn.feature_selection import SelectFpr
 from sklearn.svm import SVC
 from sklearn.ensemble import VotingClassifier
 
+
 from sklearn.linear_model import LogisticRegression
 
 #gloable for feature extraction
@@ -72,7 +73,7 @@ def getStopWordList(stopWordListFileName):
 
 def removeStopWords(words):
     featureVector = []
-    stopWords = getStopWordList('data/feature_list/stopwords.txt')
+    stopWords = getStopWordList('../data/gop/stopwords.txt')
     for w in words:
         val = re.search(r"^[a-zA-Z][a-zA-Z0-9]*[a-zA-Z]+[a-zA-Z0-9]*$", w)
         #ignore if it is a stopWord
@@ -170,10 +171,11 @@ def extract_features(tweet):
  #end
 
 
-
 def classifyAlgo(trainSet, testSet):
+    global DROP_NEUTRAL
     global FEATURELIST
     global NGRAMSFLAG
+
     FEATURELIST = []
     tweets= []
     for row in trainSet:
@@ -202,6 +204,9 @@ def classifyAlgo(trainSet, testSet):
     clf2  = MultinomialNB()
     clf3 = SVC(kernel='linear', probability=True )
     model= VotingClassifier(estimators=[('lr', clf1), ('mnb', clf2), ('svm', clf3)], voting='hard')
+    #model  = BernoulliNB()
+    model = MultinomialNB()
+
     model.fit(train_data, train_target)
 
     test_data = []
@@ -234,12 +239,23 @@ def getCleanTweets(data_file):
     return cleanTweets
 
 if __name__=='__main__':
-    REMOVESTPWORDSFLAG = False
-    CROSSVALIDFLAG = True
+    REMOVESTPWORDSFLAG = True
+    CROSSVALIDFLAG = False
     NGRAMSFLAG = False
+    DROP_NEUTRAL = False
 
     if CROSSVALIDFLAG:
-        data_file = 'data/gop/august/august_candidates_form.csv'
+        data_file = '../data/gop/august/august_full_active_form.csv'
+
         cleanTweets = getCleanTweets(data_file)
         random.shuffle(cleanTweets)
         cross_validation(cleanTweets, classifyAlgo)
+
+    else:
+        train_file  = '../data/gop/august/august_full_active_form_manip.csv'
+        test_file   = '../data/gop/march/combined_sample_unique_quote_form.csv'
+
+        trainTweets = getCleanTweets(train_file)
+        testTweets  = getCleanTweets(test_file)
+
+        classifyAlgo(trainTweets, testTweets)
