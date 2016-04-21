@@ -6,7 +6,7 @@ records = []
 num = 0
 headers = {}
 
-with open('../data/gop/august/august_full_active_drop_neutral_sample.csv', 'rU') as csvFile:
+with open('../data/gop/august/august_full_high_conf_unique.csv', 'rU') as csvFile:
 #with open('data/gop/march/combined_sample_unique.csv', 'rU') as csvFile:
     reader = csv.DictReader(csvFile)
 
@@ -24,7 +24,7 @@ with open('../data/gop/august/august_full_active_drop_neutral_sample.csv', 'rU')
             print "skipped  tweetid: %s" % row["tweet_id"]
 
 #with open('data/gop/march/combined_sample_unique_quote_form.csv',"wb+") as ofile:
-with open('../data/gop/august/august_full_active_drop_neutral_sample_form.csv',"wb+") as ofile:
+with open('../data/gop/august/august_full_high_conf_unique_form.csv',"wb+") as ofile:
     writer = csv.writer(ofile,delimiter=',')
     writer.writerows(records)
 

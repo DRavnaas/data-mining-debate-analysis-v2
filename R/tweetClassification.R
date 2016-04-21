@@ -48,7 +48,8 @@ tryAugNoNeutral <- function(csvPath="AugSentiment.csv",
   sentiment <-
     read.csv(
       csvPath,
-      header = TRUE
+      header = TRUE,
+      encoding = "UTF-8"
     )
   
   sentAugNoNeutral <- sentiment[sentiment$sentiment!="Neutral",]
@@ -66,7 +67,8 @@ tryAugTweetsWithNeutral<- function(csvPath="AugSentiment.csv",
   sentiment <-
     read.csv(
       csvPath,
-      header = TRUE
+      header = TRUE,
+      encoding = "UTF-8"
     )
   
   tryAugTweetsRun(sentiment=sentAugNoNeutral, verbose, doJustOneFold, saveToFolder)
@@ -154,9 +156,8 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
     corpus <- tm_map(corpus, removeIt, "RT @")
     
     # Turn the ... character into a space for
-    # word separation
-    corpus <- tm_map(corpus, toSpace, " .")
-    corpus <- tm_map(corpus, toSpace, ". ")
+    # word separation - 
+    corpus <- tm_map(corpus, toSpace, "…")
     
     # Collapse whitespace and remove punc & numbers
     corpus <- tm_map(corpus, removePunctuation)
