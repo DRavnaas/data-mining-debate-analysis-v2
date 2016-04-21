@@ -29,17 +29,17 @@ library(e1071)
 
 # Train and evaluate an ensemble 
 # optionally does 5 fold cross validation and saves the trained model and results
-trainAndEvaluate <- function(csvPath="AugSentiment.csv", 
+trainAndEvaluate <- function(csvPath="AllMini.csv", 
                              verbose=FALSE, 
                              doJustOneFold=FALSE,
                              saveToFolder=NULL)
 {
-  tryAugNoNeutral(csvPath, verbose, doJustOneFold, saveToFolder)
+  tryTweetsNoNeutral(csvPath, verbose, doJustOneFold, saveToFolder)
 }
 
 
 # Drop neutral labels, just train/test on positive/negative
-tryAugNoNeutral <- function(csvPath="AugSentiment.csv", 
+tryTweetsNoNeutral <- function(csvPath="AugSentiment.csv", 
                             verbose=FALSE, 
                             doJustOneFold=FALSE,
                             saveToFolder=NULL)
@@ -54,10 +54,10 @@ tryAugNoNeutral <- function(csvPath="AugSentiment.csv",
   
   sentAugNoNeutral <- sentiment[sentiment$sentiment!="Neutral",]
   
-  tryAugTweetsRun(sentiment=sentAugNoNeutral, verbose, doJustOneFold, saveToFolder)
+  tryTweetsRun(sentiment=sentAugNoNeutral, verbose, doJustOneFold, saveToFolder)
 }
 
-tryAugTweetsWithNeutral<- function(csvPath="AugSentiment.csv", 
+tryTweetsWithNeutral<- function(csvPath="AugSentiment.csv", 
                                    verbose=FALSE, 
                                    doJustOneFold=TRUE,
                                    saveToFolder=NULL)
@@ -157,6 +157,7 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
     
     # Turn the ... character into a space for
     # word separation - 
+    # BE SURE TO SAVE THIS R FILE AS UTF-8!!
     corpus <- tm_map(corpus, toSpace, "…")
     
     # Collapse whitespace and remove punc & numbers
@@ -200,7 +201,7 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
 }
 
 # Main helper function to train and evaluate input tweets
-tryAugTweetsRun <- function(sentiment=NULL, 
+tryTweetsRun <- function(sentiment=NULL, 
                             verbose=FALSE, 
                             doJustOneFold=TRUE, 
                             saveToFolder=NULL)
@@ -433,6 +434,67 @@ trainAndPredict <- function(sentimentTrain=NULL, predictSet=NULL, verbose=FALSE)
   #perFoldAnalytics
 }
 
+buildAllMiniFromCsvs <- function(marchSentimentColumnName = "sentiment", saveMiniFile = NULL)
+{
+  # These files much have the columns listed in readMiniDataFrame,
+  # and the column values must be similar (ie: "neutral" != "Neutral", 
+  # "Trump" != "trump", etc)
+  AugCsvPath <- "AugSentiment.csv"
+  marchB4Path <- "March10thV4_before_labeled-excel4.txt"
+  marchAfterPath <- "March10th_after_labeled-excel4.txt"
+  
+  augSentiment <- readMiniDataFrame(AugCsvPath)
+  
+  # The march csvs have three sentiment columns, and the UTF-8 BOM ends up in the first column name
+  marchb4sentiment <- readMiniDataFrame(marchB4Path, "X.U.FEFF.id", marchSentimentColumnName)
+  marchAfterSentiment <- readMiniDataFrame(marchAfterPath, "X.U.FEFF.id", marchSentimentColumnName)
+  
+  # We now have three data frames with consistent column names
+  allMini <- rbind(augSentiment, marchb4sentiment, marchAfterSentiment)
+  
+  if (!is.null(saveMiniFile) && length(saveMiniFile))
+  {
+    write.csv(allMini, saveMiniFile, fileEncoding = "UTF-8")
+  }
+  
+  allMini  
+}
+
+readMiniDataFrame <- function(csvPath, idColumn = "id", sentimentColumnName = "sentiment")
+{
+  fulldataFrame <- read.csv(
+    csvPath,
+    header = TRUE,
+    encoding = "UTF-8"
+  )
+  
+  if (dim(fulldataFrame)[2] < 20)
+  {
+    # This is a march file, temporarily work around some missing columna
+    # We aren't using these yet, so this is ok for now
+    # TODO: build a csv for march that has these columns.
+    fulldataFrame$tweet_id <- fulldataFrame[,idColumn]
+    fulldataFrame$candidate <- fulldataFrame[,idColumn]
+    fulldataFrame$tweet_created <- fulldataFrame[,idColumn]
+    fulldataFrame$tweet_location <- fulldataFrame[,idColumn]
+    fulldataFrame$user_timezone <- fulldataFrame[,idColumn]
+  }
+  
+  miniDataFrame <- cbind.data.frame(fulldataFrame[,idColumn], 
+                                      fulldataFrame$tweet_id,
+                                      fulldataFrame$candidate, 
+                                      fulldataFrame$tweet_created,
+                                      fulldataFrame$text, 
+                                      fulldataFrame[,sentimentColumnName],
+                                      fulldataFrame$tweet_location,
+                                      fulldataFrame$user_timezone)
+ 
+  
+  colnames(miniDataFrame) <- c("id", "tweet_id", "candidate", "tweet_created", "text",
+                              "sentiment", "tweet_location", "user_timezone") 
+  
+  miniDataFrame
+}
 
 tryAugTweetsNB <- function()
 {

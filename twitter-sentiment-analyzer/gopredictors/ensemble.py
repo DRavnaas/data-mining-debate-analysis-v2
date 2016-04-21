@@ -163,7 +163,6 @@ def classifyAlgo(trainSet, testSet):
     feature_selector = SelectFpr(chi2, alpha = 0.1)
     train_data = feature_selector.fit_transform(train_data, train_target)
 
-
     clf1  = MultinomialNB()
     clf2 = LogisticRegression()
     clf3 = KNeighborsClassifier()
@@ -216,3 +215,56 @@ if __name__=='__main__':
     cleanTweets = preprocess(data_file)
     random.shuffle(cleanTweets)
     cross_validation(cleanTweets, classifyAlgo)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # total = 0
+    # correct = 0
+    # for test_point in testSet:
+    #     total += 1
+    #     testTweet = extract_features(test_point[0])
+    #     trans_test_tweet = feature_selector.transform([testTweet])
+    #     m1_prob = model1.predict_proba(trans_test_tweet)[0]
+    #     m2_prob = model2.predict_proba(trans_test_tweet)[0]
+    #     vad_res = sig.polarity_scores("".join(test_point[0]))
+    #     if vad_res['neg'] == vad_res['pos'] == 0:
+    #         vad_prob = [0.5, 0.5]
+    #     else:
+    #         vad_prob = [vad_res['neg'] / (vad_res['neg'] + vad_res['pos']),
+    #                     vad_res['pos'] / (vad_res['neg'] + vad_res['pos'])]
+    #     m1_weight = 3
+    #     m2_weight = 5
+    #     vad_weight = 2
+    #     combined_prob = [m1_prob[0] * m1_weight + m2_prob[0] * m2_weight + vad_prob[0] * vad_weight,
+    #                      m1_prob[1] * m1_weight + m2_prob[1] * m2_weight + vad_prob[1] * vad_weight]
+    #     if combined_prob[0] > combined_prob[1]:
+    #         pred_class = '|Negative|'
+    #     else:
+    #         pred_class = '|Positive|'
+    #     if str(pred_class).lower() == str(test_point[1]).lower():
+    #         correct += 1
