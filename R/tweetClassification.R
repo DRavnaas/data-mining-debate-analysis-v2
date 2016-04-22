@@ -583,12 +583,51 @@ replaceLineFeedsFromColumn <- function(columnOfText)
   gsub("\n", " ", columnOfText)
 }
 
-#  A collection of command for easy cut/paste
+#  A collection of work in progress / commands for easy cut/paste
 testAndDebug <- function()
 {
-  allMini <- read.csv("AllLabeledQuoteMini2.csv", header=TRUE, fileEncoding="UTF-8")
-  trainAndPredict(tweetRowsTrain = allMini, predictRows = allMini)
+  allMini <- read.csv("AllLabeledQuoteMini2.csv", header=TRUE, encoding="UTF-8", fileEncoding="UTF-8")
   
-  trainAndEvaluate(csvPath="AllLabeledQuoteMini2.csv", doJustOneFold=TRUE, saveToFolder = "AugAndMarchLabeledRun") 
-  load("AugAndMarchLabeledRun/analytics.RData")
+  allMiniNoNeutral <- tweetRows[allMini$sentiment!="Neutral",]
+  
+  # Combine so we train on full test and predict on full set
+  allMiniNoNeutralx2 <- rbind(allMiniNoNeutral, allMiniNoNeutral)
+  
+  numRows <- dim(allMiniNoNeutralx2)[1]
+  endTrain <- as.integer(.5 * numRows)
+  trainRows <- 1:endTrain
+  testRows <-    (endTrain+1):numRows
+  
+  docTerms <- buildDocTermMatrix(allMiniNoNeutralx2, verbose=FALSE)
+  
+  # TODO: This is training on the first half and then testing on those
+  # same rows we copied to the second half, which is a bit of a hack
+  # Rework to separate train and test data 
+  # http://www.inside-r.org/packages/cran/RTextTools/docs/create_container
+  container = create_container(
+    docTerms,
+    as.numeric(as.factor(allMiniNoNeutralx2$sentiment)),
+    trainSize = trainRows,
+    testSize = testRows,
+    virgin = FALSE
+  )
+
+  algos = c("MAXENT", "GLMNET", "SVM")
+  
+  cat("Running ", algos, "...")
+  
+  models = train_models(container, algorithms = algos)
+  results = classify_models(container, models)  
+  
+  analytics = create_analytics(container, results)
+  docResults <- analytics@document_summary
+  
+  predictedSentiment <- docResults$CONSENSUS_CODE
+  
+  allMiniNoNeutralWithPrediction <- allMiniNoNeutral
+  allMiniNoNeutralWithPrediction$predictedLabel <- docResults$CONSENSUS_CODE
+  allMiniNoNeutralWithPrediction$actualLabel <- docResults$MANUAL_CODE
+  
+  write.csv(allMiniNoNeutralWithPrediction, "LabeledAndPredictedQuoteMini.csv", fileEncoding="UTF-8")
+  
 }
