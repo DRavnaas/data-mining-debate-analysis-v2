@@ -4,32 +4,29 @@ library(RWeka)
 library(tm)
 library(e1071)
 
-#Finish cleaning up AugAndMarchLabeled in excel
-#tweet 836 - quotes? How is that processed.
-# case issue
-# what to do with blanks in quote sentiment
+# method - trainAndEvaluate - August and March, or a particular CSV
 
 # TODO: try on "fresh" machine to ensure readme is right (use R version 3.2.4?)
-# method - trainAndEvaluate - August only or August and March
-#        - trainAndPredict - trains on full set, then makes predictions
-#        - predictFromTrainedModel - takes a trained model and docTermMatrix and makes predictions
-# add march capability
+#   TODO - trainAndPredict - trains on full set, then makes predictions
+#   TODO - predictFromTrainedModel - takes a trained model and docTermMatrix and makes predictions
 # save algorithm probabilities and run through SVM for prediction, save trained svm model
-
-# TODO: make sure we have id column for march csv for R
-
 
 # see github for various data files
 # https://github.com/yogimiraje/data-mining-debate-analysis/tree/master/R
+#  AugSentiment.csv = the original sentiment file from Kaggle/Crowdflower
+#  March10th_before_labeled.csv.txt = hand labeled sample of March tweets before the debate
+#  March10th_all_labeled.csv.txt = hand labeled sample of March tweets before the debate
+#  AllLabeledMini.csv - August and March labeled tweets, "common" 12 columns
+#  AllLabeledQuoteMini.csv - August with sentiment, March with quote sentiment, labeled tweets
 
 # Primary references used for transforming tweets for R:
 # 
-#http://faculty.washington.edu/jwilker/CAP/R_Sample_Script.R
-#https://sites.google.com/site/miningtwitter/questions/talking-about/given-users
+# http://faculty.washington.edu/jwilker/CAP/R_Sample_Script.R
+# https://sites.google.com/site/miningtwitter/questions/talking-about/given-users
 
 # Train and evaluate an ensemble (default = on both Aug and March labeled data)
 # optionally does 5 fold cross validation and saves the trained model and results
-trainAndEvaluate <- function(csvPath="AllMini.csv", 
+trainAndEvaluate <- function(csvPath="AllLabeledMini.csv", 
                              verbose=FALSE, 
                              doJustOneFold=FALSE,
                              saveToFolder=NULL)
