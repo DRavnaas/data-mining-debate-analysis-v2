@@ -50,6 +50,11 @@ tryTweetsNoNeutral <- function(csvPath="AugSentiment.csv",
     )
   
   print(paste("# rows before removing neutrals = ", dim(tweetRows)[1]))
+  numPositive <- dim(tweetRows[tweetRows$sentiment=="Positive",])[1]
+  numNeutral <- dim(tweetRows[tweetRows$sentiment=="Neutral",])[1]
+  numNegative <- dim(tweetRows[tweetRows$sentiment=="Negative",])[1]
+  print(paste("# positive = ", numPositive, ", # neutral = ", numNeutral, ", # negative =", numNegative))
+
   tweetsNoNeutral <- tweetRows[tweetRows$sentiment!="Neutral",]
   print(paste("# rows after removing neutrals = ", dim(tweetsNoNeutral)[1]))
   
@@ -72,7 +77,11 @@ tryTweetsWithNeutral<- function(csvPath="AugSentiment.csv",
     )
 
   print(paste("# rows read in = ", dim(tweetRows)[1]))
-  
+  numPositive <- dim(tweetRows[tweetRows$sentiment=="Positive",])[1]
+  numNeutral <- dim(tweetRows[tweetRows$sentiment=="Neutral",])[1]
+  numNegative <- dim(tweetRows[tweetRows$sentiment=="Negative",])[1]
+  print(paste("# positive = ", numPositive, ", # neutral = ", numNeutral, ", # negative =", numNegative))
+    
   tryTweetsRun(tweetRows, verbose, doJustOneFold, saveToFolder)
 }
 
@@ -251,7 +260,7 @@ tryTweetsRun <- function(tweetRows=NULL,
     
     # For each model, train and get test results and accuracy
     # You can lump these together to run as an ensemble, but they take a while to run.
-    #algos = c("GLMNET", "MAXENT") # this runs relatively quick (though SVM is usually better)
+    #algos = c("GLMNET", "MAXENT") # this runs relatively quick (SVM needs a lot of iterations)
     #algos = c("GLMNET", "SVM")  #SVM and GLMNET have the edge usually over MAXENT for accuracy
     algos = c("MAXENT", "GLMNET", "SVM")
     
@@ -421,7 +430,7 @@ trainAndPredict <- function(tweetRowsTrain=NULL, predictSet=NULL, verbose=FALSE)
     
   # For each model, train and get test results and accuracy
   # You can lump these together to run as an ensemble, but they take a while to run.
-  #algos = c("GLMNET", "MAXENT") # this runs relatively quick (though SVM is usually better)
+  #algos = c("GLMNET", "MAXENT") # this runs relatively quick (SVM needs a lot of iterations)
   #algos = c("GLMNET", "SVM")  #SVM and GLMNET have the edge usually over MAXENT for accuracy
   algos = c("MAXENT", "GLMNET", "SVM")
     
