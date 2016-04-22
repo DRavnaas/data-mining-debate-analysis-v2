@@ -27,7 +27,7 @@ library(e1071)
 #http://faculty.washington.edu/jwilker/CAP/R_Sample_Script.R
 #https://sites.google.com/site/miningtwitter/questions/talking-about/given-users
 
-# Train and evaluate an ensemble 
+# Train and evaluate an ensemble (default = on both Aug and March labeled data)
 # optionally does 5 fold cross validation and saves the trained model and results
 trainAndEvaluate <- function(csvPath="AllMini.csv", 
                              verbose=FALSE, 
@@ -45,16 +45,19 @@ tryTweetsNoNeutral <- function(csvPath="AugSentiment.csv",
                             saveToFolder=NULL)
 {
   print('Reading in tweets (and removing neutrals)')
-  sentiment <-
+  tweetRows <-
     read.csv(
       csvPath,
       header = TRUE,
       encoding = "UTF-8"
     )
   
-  sentAugNoNeutral <- sentiment[sentiment$sentiment!="Neutral",]
+  print(paste("# rows before removing neutrals = ", dim(tweetRows)[1]))
+  tweetsNoNeutral <- tweetRows[tweetRows$sentiment!="Neutral",]
+  print(paste("# rows after removing neutrals = ", dim(tweetsNoNeutral)[1]))
   
-  tryTweetsRun(sentiment=sentAugNoNeutral, verbose, doJustOneFold, saveToFolder)
+    
+  tryTweetsRun(tweetRows=tweetsNoNeutral, verbose, doJustOneFold, saveToFolder)
 }
 
 tryTweetsWithNeutral<- function(csvPath="AugSentiment.csv", 
@@ -64,29 +67,31 @@ tryTweetsWithNeutral<- function(csvPath="AugSentiment.csv",
 {
 
   print('Reading in tweets (with neutrals)')
-  sentiment <-
+  tweetRows <-
     read.csv(
       csvPath,
       header = TRUE,
       encoding = "UTF-8"
     )
+
+  print(paste("# rows read in = ", dim(tweetRows)[1]))
   
-  tryAugTweetsRun(sentiment=sentAugNoNeutral, verbose, doJustOneFold, saveToFolder)
+  tryTweetsRun(tweetRows, verbose, doJustOneFold, saveToFolder)
 }
 
-buildFolds <- function(sentiment)
+buildFolds <- function(tweetRows)
 {
   # build folds of the data for cross validation
   # the id happens to be a row number
-  fold0 <- sentiment[sentiment$id %% 5 == 0, ]
-  fold1 <- sentiment[sentiment$id %% 5 == 1, ]
-  fold2 <- sentiment[sentiment$id %% 5 == 2, ]
-  fold3 <- sentiment[sentiment$id %% 5 == 3, ]
-  fold4 <- sentiment[sentiment$id %% 5 == 4, ]
+  fold0 <- tweetRows[tweetRows$id %% 5 == 0, ]
+  fold1 <- tweetRows[tweetRows$id %% 5 == 1, ]
+  fold2 <- tweetRows[tweetRows$id %% 5 == 2, ]
+  fold3 <- tweetRows[tweetRows$id %% 5 == 3, ]
+  fold4 <- tweetRows[tweetRows$id %% 5 == 4, ]
   
   # Build containers where the last rows are the test fold
   #cv1All <- rbind(fold0, fold1, fold2, fold3, fold4)
-  cv1All <- sentiment
+  cv1All <- tweetRows
   cv2All <- rbind(fold1, fold2, fold3, fold4, fold0)
   cv3All <- rbind(fold2, fold3, fold4, fold0, fold1)
   cv4All <- rbind(fold3, fold4, fold0, fold1, fold2)
@@ -158,7 +163,8 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
     # Turn the ... character into a space for
     # word separation - 
     # BE SURE TO SAVE THIS R FILE AS UTF-8!!
-    corpus <- tm_map(corpus, toSpace, "…")
+    corpus <- tm_map(corpus, toSpace, " …")
+    corpus <- tm_map(corpus, toSpace, "… ")
     
     # Collapse whitespace and remove punc & numbers
     corpus <- tm_map(corpus, removePunctuation)
@@ -172,7 +178,7 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
     
     # Remove any word at the end of the string that 
     # ends with the truncation character
-    corpus <- tm_map(corpus,removeIt,"\\s*\\w*\\.$")
+    corpus <- tm_map(corpus,removeIt,"\\s*\\w*\\…$")
     
     # You can examine the resulting tweet text like so:
     #as.character(as.character(corpus[[4]]))
@@ -201,7 +207,7 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
 }
 
 # Main helper function to train and evaluate input tweets
-tryTweetsRun <- function(sentiment=NULL, 
+tryTweetsRun <- function(tweetRows=NULL, 
                             verbose=FALSE, 
                             doJustOneFold=TRUE, 
                             saveToFolder=NULL)
@@ -213,10 +219,10 @@ tryTweetsRun <- function(sentiment=NULL,
   
   print('Creating fold list')
   
-  folds <- buildFolds(sentiment)
+  folds <- buildFolds(tweetRows)
   foldNum <- 0
     
-  numRows <- as.matrix(dim(sentiment))[1,1]
+  numRows <- as.matrix(dim(tweetRows))[1,1]
   endTrain <- as.integer(.8 * numRows)
   trainRows <- 1:endTrain
   testRows <-    (endTrain+1):numRows
@@ -232,7 +238,6 @@ tryTweetsRun <- function(sentiment=NULL,
   # Loop through the folds of tweets
   for (curFold in folds)
   {
-    
     foldNum <- foldNum + 1
     cat("  Fold", foldNum, ": ")
 
@@ -392,19 +397,19 @@ tryTweetsRun <- function(sentiment=NULL,
 }
 
 
-trainAndPredict <- function(sentimentTrain=NULL, predictSet=NULL, verbose=FALSE)
+trainAndPredict <- function(tweetRowsTrain=NULL, predictSet=NULL, verbose=FALSE)
 {
   if (verbose == TRUE)
   {
     print(Sys.time())
   }
   
-  numRows <- as.matrix(dim(sentimentTrain))[1,1]
+  numRows <- as.matrix(dim(tweetRowsTrain))[1,1]
   endTrain <- as.integer(numRows)
   trainRows <- 1:endTrain
   testRows <-    (endTrain+1):(endTrain+dim(predictRows[1,1])+1)
   
-  curFold <- c(sentimentTrain$text, predictSet$text)
+  curFold <- c(tweetRowsTrain$text, predictSet$text)
     
   docTerms <- buildDocTermMatrix(curFold, verbose)
     
@@ -440,8 +445,8 @@ buildAllMiniFromCsvs <- function(marchSentimentColumnName = "sentiment", saveMin
   # and the column values must be similar (ie: "neutral" != "Neutral", 
   # "Trump" != "trump", etc)
   AugCsvPath <- "AugSentiment.csv"
-  marchB4Path <- "March10thV4_before_labeled-excel4.txt"
-  marchAfterPath <- "March10th_after_labeled-excel4.txt"
+  marchB4Path <- "March10th_before_labeled.csv.txt"
+  marchAfterPath <- "March10th_after_labeled.csv.txt"
   
   augSentiment <- readMiniDataFrame(AugCsvPath)
   
@@ -467,56 +472,60 @@ readMiniDataFrame <- function(csvPath, idColumn = "id", sentimentColumnName = "s
     header = TRUE,
     encoding = "UTF-8"
   )
-  
+
+  print(paste("# rows read = ", dim(fulldataFrame)[1]))
+    
   if (dim(fulldataFrame)[2] < 20)
   {
-    # This is a march file, temporarily work around some missing columna
-    # We aren't using these yet, so this is ok for now
-    # TODO: build a csv for march that has these columns.
-    fulldataFrame$tweet_id <- fulldataFrame[,idColumn]
-    fulldataFrame$candidate <- fulldataFrame[,idColumn]
-    fulldataFrame$tweet_created <- fulldataFrame[,idColumn]
-    fulldataFrame$tweet_location <- fulldataFrame[,idColumn]
-    fulldataFrame$user_timezone <- fulldataFrame[,idColumn]
+    # March files have a couple columns we have to shift around.
+    fulldataFrame$id <- fulldataFrame[,idColumn]
+    fulldataFrame$sentiment <- fulldataFrame[,sentimentColumnName]
+  
+    #print(fulldataFrame$id[1])
+    #print(fulldataFrame$sentiment[1])
   }
   
-  miniDataFrame <- cbind.data.frame(fulldataFrame[,idColumn], 
+  
+  miniDataFrame <- cbind.data.frame(fulldataFrame$id, 
                                       fulldataFrame$tweet_id,
                                       fulldataFrame$candidate, 
                                       fulldataFrame$tweet_created,
-                                      fulldataFrame$text, 
-                                      fulldataFrame[,sentimentColumnName],
+                                      fulldataFrame$sentiment,
                                       fulldataFrame$tweet_location,
-                                      fulldataFrame$user_timezone)
+                                      fulldataFrame$user_timezone,  
+                                      fulldataFrame$text
+                                      )
  
   
-  colnames(miniDataFrame) <- c("id", "tweet_id", "candidate", "tweet_created", "text",
-                              "sentiment", "tweet_location", "user_timezone") 
+  colnames(miniDataFrame) <- c("id", "tweet_id", "candidate", "tweet_created", 
+                              "sentiment", "tweet_location", "user_timezone", "text")
+  
   
   miniDataFrame
 }
 
-tryAugTweetsNB <- function()
+tryTweetsNB <- function(csvPath="AugSentiment.csv")
 {
-  sentimentAug <-
-    read.csv("c:\\users\\doylerav\\onedrive\\cs6220\\Sentiment.csv",
+  tweetRows <-
+    read.csv(csvPath,
              header = TRUE)
-
-  docTerms <- buildDocTermMatrix(sentimentAug)
+  print(paste("# rows read = ", dim(tweetRows)[1]))
+  
+  docTerms <- buildDocTermMatrix(tweetRows)
   featureMatrix <- as.matrix(docTerms)
 
   cat("Running Naive Bayes...")
-  
-  numRows <- as.matrix(dim(sentiment))[1,1]
+    
+  numRows <- as.matrix(dim(tweetRows))[1,1]
   endTrain <- as.integer(.8 * numRows)
   trainRows <- 1:endTrain
   testRows <-    (endTrain+1):numRows
   
-  classifier <- naiveBayes(featureMatrix[trainRows], as.factor(sentimentAug$sentiment[trainRows]))
+  classifier <- naiveBayes(featureMatrix[trainRows], as.factor(tweetRows$sentiment[trainRows]))
   predicted <- predict(classifier, featureMatrix[testRows])
 
   recallStats <-
-    recall_accuracy(sentimentAug$sentiment[testRows], predicted)
+    recall_accuracy(tweetRows$sentiment[testRows], predicted)
   
   cat("Prediction accuracy: ", recallStats)
 }
