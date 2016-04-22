@@ -26,7 +26,7 @@ library(e1071)
 
 # Train and evaluate an ensemble (default = on both Aug and March labeled data)
 # optionally does 5 fold cross validation and saves the trained model and results
-trainAndEvaluate <- function(csvPath="AllLabeledMini.csv", 
+trainAndEvaluate <- function(csvPath="AllLabeledQuoteMini.csv", 
                              verbose=FALSE, 
                              doJustOneFold=FALSE,
                              saveToFolder=NULL)
@@ -57,7 +57,24 @@ tryTweetsNoNeutral <- function(csvPath="AugSentiment.csv",
 
   tweetsNoNeutral <- tweetRows[tweetRows$sentiment!="Neutral",]
   print(paste("# rows after removing neutrals = ", dim(tweetsNoNeutral)[1]))
+ 
+  if (!is.null(saveToFolder) && length(saveToFolder) > 0)
+  {
+    print("Saving filtered data to folder...")
+    
+    tweetsNoNeutral$text <- replaceLineFeedsFromColumn(tweetsNoNeutral$text)
+    
+    if (!dir.exists(saveToFolder))
+    {
+      dir.create(saveToFolder)
+    }
+    
+    # Save filtered data?
+    filteredDataPath = paste(saveToFolder, "\\FilteredData.csv", sep="")
   
+    write.csv(tweetsNoNeutral, filteredDataPath, fileEncoding="UTF-8")
+    
+  }
     
   tryTweetsRun(tweetRows=tweetsNoNeutral, verbose, doJustOneFold, saveToFolder)
 }
@@ -96,8 +113,8 @@ buildFolds <- function(tweetRows)
   fold4 <- tweetRows[tweetRows$id %% 5 == 4, ]
   
   # Build containers where the last rows are the test fold
-  #cv1All <- rbind(fold0, fold1, fold2, fold3, fold4)
-  cv1All <- tweetRows
+  
+  cv1All <- rbind(fold0, fold1, fold2, fold3, fold4)
   cv2All <- rbind(fold1, fold2, fold3, fold4, fold0)
   cv3All <- rbind(fold2, fold3, fold4, fold0, fold1)
   cv4All <- rbind(fold3, fold4, fold0, fold1, fold2)
@@ -228,10 +245,15 @@ tryTweetsRun <- function(tweetRows=NULL,
   folds <- buildFolds(tweetRows)
   foldNum <- 0
     
-  numRows <- as.matrix(dim(tweetRows))[1,1]
+  numRows <- dim(tweetRows)[1]
   endTrain <- as.integer(.8 * numRows)
   trainRows <- 1:endTrain
   testRows <-    (endTrain+1):numRows
+  
+  if (length(trainRows) + length(testRows) != numRows)
+  {
+    print("WARNING: # training + # test != total!!!")
+  }
   
   accSumAcrossFolds.maxEnt <- 0
   accSumAcrossFolds.svm <- 0
@@ -394,29 +416,32 @@ tryTweetsRun <- function(tweetRows=NULL,
   {
     print(Sys.time())
   }
-  
-  # save off trained classifier, container, labels and results
-  if (!is.null(saveToFolder) && length(saveToFolder) > 0)
-  {
-  }
 
 }
 
 
-trainAndPredict <- function(tweetRowsTrain=NULL, predictSet=NULL, verbose=FALSE)
+trainAndPredict <- function(tweetRowsTrain, predictRows, verbose=FALSE, saveToFolder=TRUE)
 {
   if (verbose == TRUE)
   {
     print(Sys.time())
   }
   
-  numRows <- as.matrix(dim(tweetRowsTrain))[1,1]
-  endTrain <- as.integer(numRows)
+  numRows <- dim(tweetRowsTrain)[1]
+  endTrain <- numRows
   trainRows <- 1:endTrain
-  testRows <-    (endTrain+1):(endTrain+dim(predictRows[1,1])+1)
+  testRows <-    endTrain+1:endTrain + dim(predictRows)[1]
   
-  curFold <- c(tweetRowsTrain$text, predictSet$text)
-    
+  # Build one set with both train and predict row text
+  curFold <- rbind(tweetRowsTrain, predictRows)
+  
+  
+  if ((length(trainRows) + length(testRows)) != dim(curFold)[1])
+  {
+    print("WARNING: # training + # test != total!!!")
+  }  
+  
+  
   docTerms <- buildDocTermMatrix(curFold, verbose)
     
   # build container for this fold = train versus test rows and label
@@ -425,7 +450,7 @@ trainAndPredict <- function(tweetRowsTrain=NULL, predictSet=NULL, verbose=FALSE)
       as.numeric(as.factor(curFold$sentiment)),
       trainSize = trainRows,
       testSize = testRows,
-      virgin = TRUE
+      virgin = FALSE
     )
     
   # For each model, train and get test results and accuracy
@@ -438,7 +463,22 @@ trainAndPredict <- function(tweetRowsTrain=NULL, predictSet=NULL, verbose=FALSE)
     
   models = train_models(container, algorithms = algos)
   results = classify_models(container, models)
- 
+
+  # save off trained classifier, container, labels and results
+  if (!is.null(saveToFolder) && length(saveToFolder) > 0)
+  {
+    print("Saving model and results...")
+    
+    if (!dir.exists(saveToFolder))
+    {
+      dir.create(saveToFolder)
+    }
+    
+    trainedModelAndResultsPath = paste(saveToFolder, "\\", "modelsAndLabels.RData", sep="")
+    
+    save(models, container, results, file = trainedModelAndResultsPath)
+  }
+  
   results
   
   # return the list of fold analytics
@@ -534,4 +574,21 @@ tryTweetsNB <- function(csvPath="AugSentiment.csv")
     recall_accuracy(tweetRows$sentiment[testRows], predicted)
   
   cat("Prediction accuracy: ", recallStats)
+}
+
+# For easy use of excel with our output csvs, turn linefeeds
+# in the text column into spaces
+replaceLineFeedsFromColumn <- function(columnOfText)
+{
+  gsub("\n", " ", columnOfText)
+}
+
+#  A collection of command for easy cut/paste
+testAndDebug <- function()
+{
+  allMini <- read.csv("AllLabeledQuoteMini2.csv", header=TRUE, fileEncoding="UTF-8")
+  trainAndPredict(tweetRowsTrain = allMini, predictRows = allMini)
+  
+  trainAndEvaluate(csvPath="AllLabeledQuoteMini2.csv", doJustOneFold=TRUE, saveToFolder = "AugAndMarchLabeledRun") 
+  load("AugAndMarchLabeledRun/analytics.RData")
 }
