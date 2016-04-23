@@ -572,6 +572,8 @@ readLabeledDataFrame <- function(csvPath, idColumn = "id", sentimentColumnName =
   miniDataFrame
 }
 
+# Build and optionall save off the unlabeled tweet data
+# unLabeledTweets <- biuldAllUnlabeledFromCsvs("UnlabeledMarchForR.csv")
 buildAllUnlabeledFromCsvs <- function(saveToCsvPath = NULL)
 {
   
@@ -593,7 +595,7 @@ buildAllUnlabeledFromCsvs <- function(saveToCsvPath = NULL)
   {
     # August data has some linefeeds that causes excel problems
     # NOTE: August also is a UTF-8 file and March isn't - so we save as UTF-8
-    allMarchUnlabeled$text <- replaceLineFeedsFromColumn(allLabeled$text) 
+    allMarchUnlabeled$text <- replaceLineFeedsFromColumn(allMarchUnlabeled$text) 
     write.csv(allMarchUnlabeled, saveToCsvPath, fileEncoding = "UTF-8")
   }
   
@@ -643,7 +645,9 @@ readUnlabeledDataFrame <- function(csvPath, idColumn = "id")
 }
 
 
-trainAndPredictOnAllLabeled <- function(csvPath, verbose=FALSE, marchSentimentColumnName = "quote_sentiment", dropNeutrals=TRUE, saveToCsvPath="LabeledWithPredictionsQuote.csv")
+# Read in the labeled set, train on the entire set, then predict on that set.
+# Output a file with tweet data and predictions (UTF-8)
+trainAndPredictOnAllLabeled <- function(verbose=FALSE, marchSentimentColumnName = "quote_sentiment", dropNeutrals=TRUE, saveToCsvPath="LabeledWithPredictionsQuote.csv")
 {
   allLabeled <- buildAllLabeledFromCsvs(marchSentimentColumnName)
   
@@ -718,7 +722,7 @@ predictOnTrainingSet <- function(tweetRows, verbose=FALSE, saveToCsvPath)
 
 # Warning - this takes a long time for the gopdebate data set.
 # This method trains on the labeled set and then makes predictions on the unlabeled set
-predictLabelsAfterTraining <- function(dropNeutrals = TRUE, saveToCsvPath=NULL)
+predictLabelsAfterTraining <- function(dropNeutrals = TRUE, csvOutputPath = "UnLabeledWithPredictions.csv")
 {
   # Read in and train our model
   
@@ -798,14 +802,20 @@ predictLabelsAfterTraining <- function(dropNeutrals = TRUE, saveToCsvPath=NULL)
   # At the moment, we are going with the consensus label
   allPredictions$predictedLabel <- docResults$CONSENSUS_CODE
 
-  allPredictions$text <- replaceLineFeedsFromColumn(allPredictions$text)  
+  if (!is.null(csvOutputPath))
+  {
+    allPredictions$text <- replaceLineFeedsFromColumn(allPredictions$text)  
+    
+    print(paste("Saving data and predictions to", csvOutputPath))
+    # this is march only for unlabeled so no need to save as utf-8
+    write.csv(allPredictions, csvOutputPath)
+  }
   
-  write.csv(allPredictions, "UnLabeledPredictions.csv")
-  
-  # Can sample the results with
+  # Can sample the returned results with
   # numRows <- dim(allPredictions)[1]
-  # Sample <- allPredictions[sample(1:numRows,size=100,replace=FALSE),]
+  # predictSample <- allPredictions[sample(1:numRows,size=100,replace=FALSE),]
   
+  allPredictions
 }
 
 # A quick Naive Bayes test
