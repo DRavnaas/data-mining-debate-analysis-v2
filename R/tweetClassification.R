@@ -642,39 +642,6 @@ readUnlabeledDataFrame <- function(csvPath, idColumn = "id")
   miniDataFrame
 }
 
-# A quick Naive Bayes test
-tryTweetsNB <- function(csvPath="AugAndMarchLabeledQuote.csv")
-{
-  tweetRows <-
-    read.csv(csvPath,
-             header = TRUE)
-  print(paste("# rows read = ", dim(tweetRows)[1]))
-  
-  docTerms <- buildDocTermMatrix(tweetRows)
-  featureMatrix <- as.matrix(docTerms)
-
-  cat("Running Naive Bayes...")
-    
-  numRows <- as.matrix(dim(tweetRows))[1,1]
-  endTrain <- as.integer(.8 * numRows)
-  trainRows <- 1:endTrain
-  testRows <-    (endTrain+1):numRows
-  
-  classifier <- naiveBayes(featureMatrix[trainRows], as.factor(tweetRows$sentiment[trainRows]))
-  predicted <- predict(classifier, featureMatrix[testRows])
-
-  recallStats <-
-    recall_accuracy(tweetRows$sentiment[testRows], predicted)
-  
-  cat("Prediction accuracy: ", recallStats)
-}
-
-# For easy use of excel with our output csvs, turn linefeeds
-# in the text column into spaces
-replaceLineFeedsFromColumn <- function(columnOfText)
-{
-  gsub("\n", " ", columnOfText)
-}
 
 trainAndPredictOnAllLabeled <- function(csvPath, verbose=FALSE, marchSentimentColumnName = "quote_sentiment", dropNeutrals=TRUE, saveToCsvPath="LabeledWithPredictionsQuote.csv")
 {
@@ -840,6 +807,41 @@ predictLabelsAfterTraining <- function(dropNeutrals = TRUE, saveToCsvPath=NULL)
   # Sample <- allPredictions[sample(1:numRows,size=100,replace=FALSE),]
   
 }
+
+# A quick Naive Bayes test
+tryTweetsNB <- function(csvPath="AugAndMarchLabeledQuote.csv")
+{
+  tweetRows <-
+    read.csv(csvPath,
+             header = TRUE)
+  print(paste("# rows read = ", dim(tweetRows)[1]))
+  
+  docTerms <- buildDocTermMatrix(tweetRows)
+  featureMatrix <- as.matrix(docTerms)
+  
+  cat("Running Naive Bayes...")
+  
+  numRows <- as.matrix(dim(tweetRows))[1,1]
+  endTrain <- as.integer(.8 * numRows)
+  trainRows <- 1:endTrain
+  testRows <-    (endTrain+1):numRows
+  
+  classifier <- naiveBayes(featureMatrix[trainRows], as.factor(tweetRows$sentiment[trainRows]))
+  predicted <- predict(classifier, featureMatrix[testRows])
+  
+  recallStats <-
+    recall_accuracy(tweetRows$sentiment[testRows], predicted)
+  
+  cat("Prediction accuracy: ", recallStats)
+}
+
+# For easy use of excel with our output csvs, turn linefeeds
+# in the text column into spaces
+replaceLineFeedsFromColumn <- function(columnOfText)
+{
+  gsub("\n", " ", columnOfText)
+}
+
 
 dropNeutrals <- function(tweetRows)
 {
