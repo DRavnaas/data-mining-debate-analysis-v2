@@ -692,10 +692,14 @@ predictLabelsAfterTraining <- function(saveToFolder=NULL)
     
   colnames(allTest) <- c("id", "tweet_id", "candidate", "tweet_created", "tweet_location",
                          "user_timezone", "text", "sentiment")
+  write.csv(allTest, "UnlabeledMarchForR.csv")
+  
+  
   colnames(allMiniTest) <- c("id", "tweet_id", "candidate", "tweet_created", "tweet_location",
                          "user_timezone", "text", "sentiment")
   allTrainAndUnlabeled <- rbind(allMiniTest, allTest)
-    
+  
+      
   numRows <- dim(allMiniTest)[1]
   endTrain <- numRows
   trainRows <- 1:endTrain
