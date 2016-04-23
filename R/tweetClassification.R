@@ -56,6 +56,7 @@ tryTweetsNoNeutral <- function(csvPath="AugSentiment.csv",
       encoding = "UTF-8"
     )
   
+  # When these go through as.factor, 1 = Negative, 3 = Positive
   print(paste("# rows before removing neutrals = ", dim(tweetRows)[1]))
   numPositive <- dim(tweetRows[tweetRows$sentiment=="Positive",])[1]
   numNeutral <- dim(tweetRows[tweetRows$sentiment=="Neutral",])[1]
