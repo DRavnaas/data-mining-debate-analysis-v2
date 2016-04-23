@@ -234,7 +234,7 @@ if __name__=='__main__':
         random.shuffle(cleanTweets)
         cross_validation(cleanTweets, classifyAlgo)
     else:
-        train_file  = '../data/gop/august/august_full_form.csv'
+        train_file  = '../data/gop/august/august_active_high_conf_unique_form.csv'
         test_file   = '../data/gop/march/combined_sample_unique_quote_form.csv'
 
         trainTweets = preprocess(train_file)

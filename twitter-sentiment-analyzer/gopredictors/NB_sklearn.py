@@ -37,7 +37,7 @@ def processTweet(tweet):
     # #Convert www.* or https?://* to URL
     # tweet = re.sub('((www\.[^\s]+)|(https?://[^\s]+))','URL',tweet)
     # #Convert @username to AT_USER
-    # tweet = re.sub('@[^\s]+','AT_USER',tweet)
+    # ##tweet = re.sub('@[^\s]+','AT_USER',tweet)
     # #Remove additional white spaces
     # tweet = re.sub('[\s]+', ' ', tweet)
     # #Replace #word with word
@@ -166,7 +166,7 @@ def classifyAlgo(trainSet, testSet):
              vad_prob = [0.5,0.5]
          else:
              vad_prob = [vad_res['neg']/(vad_res['neg']+vad_res['pos']), vad_res['pos']/(vad_res['neg']+vad_res['pos'])]
-         m1_weight = 2
+         m1_weight = 1
          m2_weight = 2
          vad_weight = 1
          combined_prob = [m1_prob[0]*m1_weight+m2_prob[0]*m2_weight+vad_prob[0]*vad_weight,m1_prob[1]*m1_weight+m2_prob[1]*m2_weight+vad_prob[1]*vad_weight ]
@@ -209,7 +209,9 @@ if __name__=='__main__':
     CROSSVALIDFLAG = True
 
     if CROSSVALIDFLAG:
-        data_file = '../data/gop/august/august_march.csv'
+        data_file = '../data/gop/august/august_full_high_conf_unique_form.csv'  #89%
+        #data_file = '../data/gop/august/august_march.csv' 86 %
+
         cleanTweets = preprocess(data_file)
         random.shuffle(cleanTweets)
         cross_validation(cleanTweets, classifyAlgo)
