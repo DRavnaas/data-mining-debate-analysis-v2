@@ -15,6 +15,14 @@ import com.opencsv.CSVWriter;
 public class cleanCsv
 {
 
+    // Usage:
+    // C:\Users\doylerav\Documents\GitHub\data-mining-debate-analysis\r\excel\filtered\march10th_before_aggAndFilt.csv.txt
+    // C:\Users\doylerav\Documents\GitHub\data-mining-debate-analysis\r\excel\filtered\march10th_before_aggAndFiltforR.csv
+    // 20000
+    // C:\Users\doylerav\Documents\GitHub\data-mining-debate-analysis\r\excel\filtered\march10th_after_aggAndFilt.csv.txt
+    // C:\Users\doylerav\Documents\GitHub\data-mining-debate-analysis\r\excel\filtered\march10th_after_aggAndFiltforR.csv
+    // 30000
+
     // Cleans a csv file of line breaks in the middle of tweet text
     // (these cause ingestion issues)
     public static void main(String[] args) throws Exception
@@ -139,8 +147,9 @@ public class cleanCsv
                     headerWithId[i] = newHeader[i];
                 }
 
-                newHeader[newHeader.length] = "id";
+                headerWithId[newHeader.length] = "id";
                 idIndex = newHeader.length;
+                newHeader = headerWithId;
 
             }
 
@@ -213,7 +222,8 @@ public class cleanCsv
                     // Add the id.
                     String[] newFields = new String[fields.length + 1];
 
-                    // Copy existing fields
+                    // Copy existing fields and convert a couple fields that
+                    // tend to be in the original filtered files.
                     for (int i = 0; i < fields.length; i++)
                     {
                         newFields[i] = fields[i];
@@ -250,11 +260,11 @@ public class cleanCsv
 
                 // This is an attempt to catch some columns that split because of a comma and no
                 // paired quotes.
-                if (fields.length > textIndex && headerFields[textIndex + 1] == "")
+                if (fields.length > textIndex + 1 && headerFields[textIndex + 1] == "")
                 {
                     text = text + ", " + fields[textIndex + 1];
                 }
-                if (fields.length > textIndex + 1 && headerFields[textIndex + 2] == "")
+                if (fields.length > textIndex + 2 && headerFields[textIndex + 2] == "")
                 {
                     text = text + ", " + fields[textIndex + 2];
                 }
