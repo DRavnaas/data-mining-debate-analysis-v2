@@ -7,9 +7,11 @@ library(e1071)
 # method - trainAndEvaluate - August and March, or a particular CSV
 
 # TODO: try on "fresh" machine to ensure readme is right (use R version 3.2.4?)
-#   TODO - trainAndPredict - trains on full set, then makes predictions
-#   TODO - predictFromTrainedModel - takes a trained model and docTermMatrix and makes predictions
 # save algorithm probabilities and run through SVM for prediction, save trained svm model
+
+#   trainAndEvaluate - trains on a set and does 5 fold validation - good for evaluating tuning
+#   trainAndPredict - trains on full set, then makes predictions on that set
+#   predictLabelsAfterTraining - trains on a labeled set, then makes predictions on unlabelled set
 
 # see github for various data files
 # https://github.com/yogimiraje/data-mining-debate-analysis/tree/master/R
@@ -23,6 +25,11 @@ library(e1071)
 # 
 # http://faculty.washington.edu/jwilker/CAP/R_Sample_Script.R
 # https://sites.google.com/site/miningtwitter/questions/talking-about/given-users
+
+# General help for RTextTools
+# https://github.com/timjurka/RTextTools/tree/master/RTextTools/inst/examples
+# http://www.inside-r.org/packages/cran/RTextTools/docs/create_container
+
 
 # Train and evaluate an ensemble (default = on both Aug and March labeled data)
 # optionally does 5 fold cross validation and saves the trained model and results
@@ -76,7 +83,7 @@ tryTweetsNoNeutral <- function(csvPath="AugSentiment.csv",
     
   }
     
-  tryTweetsRun(tweetRows=tweetsNoNeutral, verbose, doJustOneFold, saveToFolder)
+tryTweetsRun(tweetRows=tweetsNoNeutral, verbose, doJustOneFold, saveToFolder)
 }
 
 tryTweetsWithNeutral<- function(csvPath="AugSentiment.csv", 
@@ -126,7 +133,7 @@ buildFolds <- function(tweetRows)
 
 buildDocTermMatrix <- function(curFold, verbose=FALSE)
 {
-  nGramLength <- 1 # run 1/2/3 = unigrams
+  nGramLength <- 1 # run with unigrams for speed, bigrams for slightly better accuracy
   
   # This toggles between two implementations of the doc term matrix builder
   # I liked the tm version better in the end.
@@ -166,7 +173,7 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
     cat("Creating term matrix... ")
     
     corpus <- Corpus(VectorSource(curFold$text))
-    
+        
     # do a variety of transformations that are intended to 
     # separate/normalize words
     toSpace <- content_transformer(function(x,pattern)
@@ -420,6 +427,8 @@ tryTweetsRun <- function(tweetRows=NULL,
 }
 
 
+# Trains on a labeled set and then makes predictions on a labeled set
+# using the trained model - returns results 
 trainAndPredict <- function(tweetRowsTrain, predictRows, verbose=FALSE, saveToFolder=TRUE)
 {
   if (verbose == TRUE)
@@ -481,8 +490,6 @@ trainAndPredict <- function(tweetRowsTrain, predictRows, verbose=FALSE, saveToFo
   
   results
   
-  # return the list of fold analytics
-  #perFoldAnalytics
 }
 
 buildAllMiniFromCsvs <- function(marchSentimentColumnName = "sentiment", saveMiniFile = NULL)
@@ -550,6 +557,7 @@ readMiniDataFrame <- function(csvPath, idColumn = "id", sentimentColumnName = "s
   miniDataFrame
 }
 
+# A quick Naive Bayes test
 tryTweetsNB <- function(csvPath="AugSentiment.csv")
 {
   tweetRows <-
@@ -583,8 +591,10 @@ replaceLineFeedsFromColumn <- function(columnOfText)
   gsub("\n", " ", columnOfText)
 }
 
-#  A collection of work in progress / commands for easy cut/paste
-testAndDebug <- function()
+# Outputs a csv with predictions on a given training set
+# Since training = the prediction set, the accuracy for this is 
+# misleadingly high - but used for initial success metric work.
+predictOnTrainingSet <- function(saveToFolder=NULL)
 {
   allMini <- read.csv("AllLabeledQuoteMini2.csv", header=TRUE, encoding="UTF-8", fileEncoding="UTF-8")
   
@@ -627,7 +637,129 @@ testAndDebug <- function()
   allMiniNoNeutralWithPrediction <- allMiniNoNeutral
   allMiniNoNeutralWithPrediction$predictedLabel <- docResults$CONSENSUS_CODE
   allMiniNoNeutralWithPrediction$actualLabel <- docResults$MANUAL_CODE
+  allMiniNoNeutralWithPrediction$maxEntPrediction <- docResults$MAXENTROPY_LABEL
+  allMiniNoNeutralWithPrediction$maxEntProbability <- docResults$MAXENTROPY_PROB
+  allMiniNoNeutralWithPrediction$svmPrediction <- docResults$SVM_LABEL
+  allMiniNoNeutralWithPrediction$svmProbability <- docResults$SVM_PROB
+  allMiniNoNeutralWithPrediction$glmnetPrediction <- docResults$GLMNET_LABEL
+  allMiniNoNeutralWithPrediction$glmnetProbability <- docResults$GLMNET_PROB
+  allMiniNoNeutralWithPrediction$consensusCount <- docResults$CONSENSUS_AGREE
+  allMiniNoNeutralWithPrediction$probabilityLabel <- docResults$PROBABILITY_CODE
+  allMiniNoNeutralWithPrediction$consensusLabel <- docResults$CONSENSUS_CODE
   
+  # At the moment, we are going with the consensus label
+  allMiniNoNeutralWithPrediction$predictedLabel <- docResults$CONSENSUS_CODE
+
+  allMiniNoNeutralWithPrediction$text <- replaceLineFeedsFromColumn(allMiniNoNeutralWithPrediction$text)  
   write.csv(allMiniNoNeutralWithPrediction, "LabeledAndPredictedQuoteMini.csv", fileEncoding="UTF-8")
+  
+}
+
+# Warning - this takes a long time for the gopdebate data set.
+# This method trains on the labeled set and then makes predictions on the unlabeled set
+predictLabelsAfterTraining <- function(saveToFolder=NULL)
+{
+  # Read in and train our model
+  allMini <- read.csv("AllLabeledQuoteMini2.csv", header=TRUE, encoding="UTF-8", fileEncoding="UTF-8")
+  
+  allMiniNoNeutral <- allMini[allMini$sentiment!="Neutral",]
+  
+  allMiniTest <- cbind.data.frame(allMiniNoNeutral[,"id"],
+                                  allMiniNoNeutral[,"tweet_id"],
+                                  allMiniNoNeutral[,"candidate"],
+                                  allMiniNoNeutral[,"tweet_created"],
+                                  allMiniNoNeutral[,"tweet_location"],
+                                  allMiniNoNeutral[,"user_timezone"],
+                                  allMiniNoNeutral[,"text"],
+                                  allMiniNoNeutral[,"sentiment"])
+
+  # unlabeled data
+  allMarchUnlabeledB4 <- read.csv("march10th_before_allunlabeled_forR.csv", header=TRUE)
+  allMarchUnlabeledAfter <- read.csv("march10th_after_allunlabeled_forR.csv", header=TRUE)
+  allMarchUnlabeled <- rbind(allMarchUnlabeledB4, allMarchUnlabeledAfter)
+  allMarchUnlabeled$sentiment <- c("Positive",rep("Negative",c(nrow(allMarchUnlabeled)-1)))
+  
+  allTest <- cbind.data.frame(allMarchUnlabeled[,"id"],
+                              allMarchUnlabeled[,"tweet_id"],
+                              allMarchUnlabeled[,"candidate"],
+                              allMarchUnlabeled[,"tweet_created"],
+                              allMarchUnlabeled[,"tweet_location"],
+                              allMarchUnlabeled[,"user_timezone"],
+                              allMarchUnlabeled[,"text"],
+                              allMarchUnlabeled[,"sentiment"])
+ 
+    
+  colnames(allTest) <- c("id", "tweet_id", "candidate", "tweet_created", "tweet_location",
+                         "user_timezone", "text", "sentiment")
+  colnames(allMiniTest) <- c("id", "tweet_id", "candidate", "tweet_created", "tweet_location",
+                         "user_timezone", "text", "sentiment")
+  allTrainAndUnlabeled <- rbind(allMiniTest, allTest)
+    
+  numRows <- dim(allMiniTest)[1]
+  endTrain <- numRows
+  trainRows <- 1:endTrain
+  testRows <- (endTrain+1):(endTrain+dim(allTest)[1])
+  
+  docTerms <- buildDocTermMatrix(allTrainAndUnlabeled, verbose=FALSE)
+  
+  container = create_container(
+    docTerms,
+    as.numeric(as.factor(allTrainAndUnlabeled$sentiment)),
+    trainSize = trainRows,
+    testSize = testRows,
+    virgin = FALSE
+  )
+  
+  algos = c("MAXENT", "GLMNET", "SVM")
+  
+  cat("Running ", algos, "...")
+  
+  models = train_models(container, algorithms = algos)
+  
+  # Now predict labels for the test rows
+  # Note that any accuracy reported is bogus
+  # since we faked the sentiment for the unlabeled rows.
+  # But we will now have per row/ per algo prediction info.
+  results = classify_models(container, models)  
+
+  # This all took forever, so let's save it.
+  save(models, container, file = "AugAndMarchUnlabeledRun/trainedModels.RData")
+  
+  analytics = create_analytics(container, results)
+  
+  save(analytics, results, file = "AugAndMarchUnlabeledRun/analytics.RData")
+  
+  docResults <- analytics@document_summary
+  
+  analytics = create_analytics(container, results)
+  docResults <- analytics@document_summary
+  
+  predictedSentiment <- docResults$CONSENSUS_CODE
+  
+  # Output the results.  Notice there's no point outputting the 
+  # label since it isn't a real value for that tweet.
+  allPredictions <- allTest
+  allPredictions$predictedLabel <- docResults$CONSENSUS_CODE
+  #allPredictions$actualLabel <- docResults$MANUAL_CODE
+  allPredictions$maxEntPrediction <- docResults$MAXENTROPY_LABEL
+  allPredictions$maxEntProbability <- docResults$MAXENTROPY_PROB
+  allPredictions$svmPrediction <- docResults$SVM_LABEL
+  allPredictions$svmProbability <- docResults$SVM_PROB
+  allPredictions$glmnetPrediction <- docResults$GLMNET_LABEL
+  allPredictions$glmnetProbability <- docResults$GLMNET_PROB
+  allPredictions$consensusCount <- docResults$CONSENSUS_AGREE
+  allPredictions$probabilityLabel <- docResults$PROBABILITY_CODE
+  allPredictions$consensusLabel <- docResults$CONSENSUS_CODE
+  
+  # At the moment, we are going with the consensus label
+  allPredictions$predictedLabel <- docResults$CONSENSUS_CODE
+
+  allPredictions$text <- replaceLineFeedsFromColumn(allPredictions$text)  
+  
+  write.csv(allPredictions, "UnLabelePredictions.csv")
+  
+  # Can sample the results with
+  # numRows <- dim(allPredictions)[1]
+  # Sample <- allPredictions[sample(1:numRows,size=100,replace=FALSE),]
   
 }
