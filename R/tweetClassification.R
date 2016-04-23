@@ -105,7 +105,7 @@ tryTweetsWithNeutral<- function(csvPath="AugSentiment.csv",
   numPositive <- dim(tweetRows[tweetRows$sentiment=="Positive",])[1]
   numNeutral <- dim(tweetRows[tweetRows$sentiment=="Neutral",])[1]
   numNegative <- dim(tweetRows[tweetRows$sentiment=="Negative",])[1]
-  print(paste("# positive = ", numPositive, ", # neutral = ", numNeutral, ", # negative =", numNegative))
+  print(paste("# positive =", numPositive, ", # neutral =", numNeutral, ", # negative =", numNegative))
     
   tryTweetsRun(tweetRows, verbose, doJustOneFold, saveToFolder)
 }
@@ -503,7 +503,7 @@ trainAndPredict <- function(tweetRowsTrain, predictRows, verbose=FALSE, saveToFo
   
 }
 
-buildAllLabeledFromCsvs <- function(marchSentimentColumnName = "sentiment", saveMiniFile = NULL)
+buildAllLabeledFromCsvs <- function(marchSentimentColumnName = "sentiment", saveToCsvPath = NULL)
 {
   
   # These files much have the columns listed in readMiniDataFrame,
@@ -513,21 +513,21 @@ buildAllLabeledFromCsvs <- function(marchSentimentColumnName = "sentiment", save
   marchB4Path <- "March10th_before_labeledforR.csv"
   marchAfterPath <- "March10th_after_labeledforR.csv"
 
-  print(paste("Reading labeled rows from  ", AugCsvPath, ", ", marchB4Path, ", ", marchAfterPath))
+  print(paste("Reading labeled rows from", AugCsvPath, ",", marchB4Path, ",", marchAfterPath))
   
-  augSentiment <- readMiniDataFrame(AugCsvPath)
-  marchb4sentiment <- readMiniDataFrame(marchB4Path, sentimentColumnName=marchSentimentColumnName)
-  marchAfterSentiment <- readMiniDataFrame(marchAfterPath, sentimentColumnName=marchSentimentColumnName)
+  augSentiment <- readLabeledDataFrame(AugCsvPath)
+  marchb4sentiment <- readLabeledDataFrame(marchB4Path, sentimentColumnName=marchSentimentColumnName)
+  marchAfterSentiment <- readLabeledDataFrame(marchAfterPath, sentimentColumnName=marchSentimentColumnName)
   
   # We now have three data frames with consistent column names
   allLabeled <- rbind(augSentiment, marchb4sentiment, marchAfterSentiment)
   
-  if (!is.null(saveMiniFile) && length(saveMiniFile))
+  if (!is.null(saveToCsvPath) && length(saveToCsvPath))
   {
     # August data has some linefeeds that causes excel problems
     # NOTE: August also is a UTF-8 file and March isn't - so we save as UTF-8
     allLabeled$text <- replaceLineFeedsFromColumn(allLabeled$text) 
-    write.csv(allLabeled, saveMiniFile, fileEncoding = "UTF-8")
+    write.csv(allLabeled, saveToCsvPath, fileEncoding = "UTF-8")
   }
   
   allLabeled  
@@ -572,6 +572,37 @@ readLabeledDataFrame <- function(csvPath, idColumn = "id", sentimentColumnName =
   miniDataFrame
 }
 
+buildAllUnlabeledFromCsvs <- function(saveToCsvPath = NULL)
+{
+  
+  # These files much have the columns listed in readMiniDataFrame,
+  # and the column values must be similar (ie: "neutral" != "Neutral", 
+  # "Trump" != "trump", etc)
+  marchB4Path <- "March10th_before_allunlabeled_forR.csv"
+  marchAfterPath <- "March10th_after_allunlabeled_forR.csv"
+  
+  print(paste("Reading unlabeled rows from", marchB4Path, ",", marchAfterPath))
+  
+  # unlabeled data
+  allMarchUnlabeledB4 <- readUnlabeledDataFrame(marchB4Path)
+  allMarchUnlabeledAfter <- readUnlabeledDataFrame(marchAfterPath)
+  
+  allMarchUnlabeled <- rbind(allMarchUnlabeledB4, allMarchUnlabeledAfter)
+  
+  if (!is.null(saveToCsvPath) && length(saveToCsvPath))
+  {
+    # August data has some linefeeds that causes excel problems
+    # NOTE: August also is a UTF-8 file and March isn't - so we save as UTF-8
+    allMarchUnlabeled$text <- replaceLineFeedsFromColumn(allLabeled$text) 
+    write.csv(allMarchUnlabeled, saveToCsvPath, fileEncoding = "UTF-8")
+  }
+  
+  allMarchUnlabeled  
+  
+ 
+   
+}
+
 # Read in an unlabeled file 
 # There's probably a smart way to refactor with with readLabeledDataFrame?
 readUnlabeledDataFrame <- function(csvPath, idColumn = "id")
@@ -593,7 +624,6 @@ readUnlabeledDataFrame <- function(csvPath, idColumn = "id")
     #print(fulldataFrame$id[1])
     #print(fulldataFrame$sentiment[1])
   }
-  
   
   miniDataFrame <- cbind.data.frame(fulldataFrame$id, 
                                     fulldataFrame$tweet_id,
@@ -721,49 +751,24 @@ predictOnTrainingSet <- function(tweetRows, verbose=FALSE, saveToCsvPath)
 
 # Warning - this takes a long time for the gopdebate data set.
 # This method trains on the labeled set and then makes predictions on the unlabeled set
-predictLabelsAfterTraining <- function(saveToFolder=NULL)
+predictLabelsAfterTraining <- function(dropNeutrals = TRUE, saveToCsvPath=NULL)
 {
   # Read in and train our model
-  allMini <- read.csv("AllLabeledQuoteMini2.csv", header=TRUE, encoding="UTF-8", fileEncoding="UTF-8")
   
-  allMiniNoNeutral <- allMini[allMini$sentiment!="Neutral",]
+  allLabeled <- buildAllLabeledFromCsvs(marchSentimentColumnName)
   
-  allMiniTest <- cbind.data.frame(allMiniNoNeutral[,"id"],
-                                  allMiniNoNeutral[,"tweet_id"],
-                                  allMiniNoNeutral[,"candidate"],
-                                  allMiniNoNeutral[,"tweet_created"],
-                                  allMiniNoNeutral[,"tweet_location"],
-                                  allMiniNoNeutral[,"user_timezone"],
-                                  allMiniNoNeutral[,"text"],
-                                  allMiniNoNeutral[,"sentiment"])
+  if (dropNeutrals == TRUE)
+  {
+    allLabeled <- dropNeutrals(allLabeled)
+  }
+  
+  allMarchUnlabeled <- buildAllUnlabeledFromCsvs()
 
-  # unlabeled data
-  allMarchUnlabeledB4 <- read.csv("march10th_before_allunlabeled_forR.csv", header=TRUE)
-  allMarchUnlabeledAfter <- read.csv("march10th_after_allunlabeled_forR.csv", header=TRUE)
-  allMarchUnlabeled <- rbind(allMarchUnlabeledB4, allMarchUnlabeledAfter)
   allMarchUnlabeled$sentiment <- c("Positive",rep("Negative",c(nrow(allMarchUnlabeled)-1)))
-  
-  allTest <- cbind.data.frame(allMarchUnlabeled[,"id"],
-                              allMarchUnlabeled[,"tweet_id"],
-                              allMarchUnlabeled[,"candidate"],
-                              allMarchUnlabeled[,"tweet_created"],
-                              allMarchUnlabeled[,"tweet_location"],
-                              allMarchUnlabeled[,"user_timezone"],
-                              allMarchUnlabeled[,"text"],
-                              allMarchUnlabeled[,"sentiment"])
- 
-    
-  colnames(allTest) <- c("id", "tweet_id", "candidate", "tweet_created", "tweet_location",
-                         "user_timezone", "text", "sentiment")
-  write.csv(allTest, "UnlabeledMarchForR.csv")
-  
-  
-  colnames(allMiniTest) <- c("id", "tweet_id", "candidate", "tweet_created", "tweet_location",
-                         "user_timezone", "text", "sentiment")
-  allTrainAndUnlabeled <- rbind(allMiniTest, allTest)
-  
+
+  allTrainAndUnlabeled <- rbind(allLabeled, allMarchUnlabeled)
       
-  numRows <- dim(allMiniTest)[1]
+  numRows <- dim(allLabeled)[1]
   endTrain <- numRows
   trainRows <- 1:endTrain
   testRows <- (endTrain+1):(endTrain+dim(allTest)[1])
@@ -784,12 +789,16 @@ predictLabelsAfterTraining <- function(saveToFolder=NULL)
   
   models = train_models(container, algorithms = algos)
   
+  print("Training done!")
+  
   # Now predict labels for the test rows
   # Note that any accuracy reported is bogus
   # since we faked the sentiment for the unlabeled rows.
   # But we will now have per row/ per algo prediction info.
   results = classify_models(container, models)  
 
+  print("Prediction done!")
+  
   # This all took forever, so let's save it.
   save(models, container, file = "AugAndMarchUnlabeledRun/trainedModels.RData")
   
@@ -824,7 +833,7 @@ predictLabelsAfterTraining <- function(saveToFolder=NULL)
 
   allPredictions$text <- replaceLineFeedsFromColumn(allPredictions$text)  
   
-  write.csv(allPredictions, "UnLabelePredictions.csv")
+  write.csv(allPredictions, "UnLabeledPredictions.csv")
   
   # Can sample the results with
   # numRows <- dim(allPredictions)[1]
