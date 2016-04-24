@@ -66,13 +66,13 @@ tryTweetsNoNeutral <- function(csvPath="AugSentiment.csv",
   tweetsNoNeutral <- tweetRows[tweetRows$sentiment!="Neutral",]
   print(paste("# rows after removing neutrals = ", dim(tweetsNoNeutral)[1]))
  
-  if (!is.null(saveToFolder) && length(saveToFolder) > 0)
+  if (is.null(saveToFolder) == FALSE && length(saveToFolder) > 0)
   {
     print("Saving filtered data to folder...")
     
     tweetsNoNeutral$text <- replaceLineFeedsFromColumn(tweetsNoNeutral$text)
     
-    if (!dir.exists(saveToFolder))
+    if (dir.exists(saveToFolder) == FALSE)
     {
       dir.create(saveToFolder)
     }
@@ -84,7 +84,7 @@ tryTweetsNoNeutral <- function(csvPath="AugSentiment.csv",
     
   }
     
-  tryTweetsRun(tweetRows=tweetsNoNeutral, verbose, doJustOneFold, saveToFolder)
+  tryTweetsRun(tweetRows=tweetsNoNeutral, verbose=verbose, doJustOneFold=doJustOneFold, saveToFolder=saveToFolder)
 }
 
 tryTweetsWithNeutral<- function(csvPath="AugSentiment.csv", 
@@ -107,8 +107,9 @@ tryTweetsWithNeutral<- function(csvPath="AugSentiment.csv",
   numNegative <- dim(tweetRows[tweetRows$sentiment=="Negative",])[1]
   print(paste("# positive =", numPositive, ", # neutral =", numNeutral, ", # negative =", numNegative))
     
-  tryTweetsRun(tweetRows, verbose, doJustOneFold, saveToFolder)
+  tryTweetsRun(tweetRows=tweetsRows, verbose=verbose, doJustOneFold=doJustOneFold, saveToFolder=saveToFolder, testRows=NULL)
 }
+
 
 buildFolds <- function(tweetRows)
 {
@@ -148,6 +149,7 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
     
   if (useCreateMatrix ==TRUE)
   {
+    # This is a bit buggy (ngramLength > 1 doesn't work at the very least)
     cat("Creating term matrix (old)...")
     
     docTerms <- create_matrix(
@@ -191,7 +193,7 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
     corpus <- tm_map(corpus,toSpace,"\r")
     corpus <- tm_map(corpus, removeIt, "RT @")
     
-    # Turn the ... character into a space for
+    # Turn the ... character into a space for 
     # word separation - 
     # BE SURE TO SAVE THIS R FILE AS UTF-8!!
     corpus <- tm_map(corpus, toSpace, " …")
@@ -237,36 +239,84 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
   docTerms
 }
 
-# Main helper function to train and evaluate input tweets
-tryTweetsRun <- function(tweetRows=NULL, 
-                            verbose=FALSE, 
-                            testRows=NULL,
-                            doJustOneFold=TRUE, 
-                            saveToFolder=NULL)
+trainOnAugTestOnMarch <- function(verbose=FALSE, dropNeutral=TRUE, sentColumnName="sentiment")
 {
+  allLabeled <- buildAllLabeledFromCsvs(marchSentimentColumnName="sentiment")
+  
+  # TODO: Could likely use tweet_created data or id ranges to figure
+  # this out dynamically, but with August data being fixed, hardcoding isn't so bad.
+  AugEnd <- 13871
+  AugEndNoNeutral <- 10729
+  
+  if (dropNeutral == TRUE)
+  {
+    allLabeled <- dropNeutrals(allLabeled)
+    AugEnd <- AugEndNoNeutral
+  }
+  
+  testRows <- AugEnd:dim(allLabeled)[1]
+  
+  tryTweetsRun(tweetRows=allLabeled, verbose=verbose, doJustOneFold=TRUE, testRows=testRows)
+  
+}
+
+# Main helper function to train and evaluate input tweets
+tryTweetsRun <- function(tweetRows, 
+                            verbose=FALSE, 
+                            doJustOneFold=TRUE, 
+                            saveToFolder=NULL,
+                            testRows=NULL)
+{
+  
   if (verbose == TRUE)
   {
     print(Sys.time())
   }
   
-  print('Creating fold list')
-  
-  folds <- buildFolds(tweetRows)
-  foldNum <- 0
-    
-  if (is.null(testRows))
+  # If the caller specified testRows, but it doesn't look valid... 
+  if ((is.null(testRows) == FALSE) && (length(testRows) <= 1))
   {
+    print("Invalid testRows value (null or length <=1)")
+    return
+  }
+  
+  if ((is.null(testRows) == TRUE) || (length(testRows) <= 1))
+  {
+    print(paste("Assigning 20% of rows randomly to test fold"))
+    
     numRows <- dim(tweetRows)[1]
     endTrain <- as.integer(.8 * numRows)
     trainRows <- 1:endTrain
     testRows <-    (endTrain+1):numRows
-  }
-  else {
-    # This is useful for running on March only (w doJustOneFold=TRUE), for example.
+    
+  } else
+  {
+    # This is useful for running on March only (w doJustOneFold=TRUE)
+    print(paste("Fixing test rows to input set (rather than random)"))
+    
     numRows <- dim(tweetRows)[1]
     endTrain <- numRows - length(testRows)
     trainRows <- 1:endTrain
+    
+    # Force this to true, use to force test data at end (Aug/March)
+    # ie: we assume numTestRows means all at the end of the input rows.
+    doJustOneFold <- TRUE
+    
   }
+  
+  if (doJustOneFold == FALSE)
+  {
+    print(paste('Creating fold list for ', dim(tweetRows)[1], "rows, # train =", length(trainRows), "/ # test =", length(testRows)))
+    
+    folds <- buildFolds(tweetRows)
+  }
+  else {
+    print(paste('Creating one time run fold for ', dim(tweetRows)[1], "rows, # train =", length(trainRows), "/ # test =", length(testRows)))
+    
+    folds <- list(tweetRows)
+  }
+  
+  foldNum <- 0
   
   if (length(trainRows) + length(testRows) != numRows)
   {
@@ -285,9 +335,10 @@ tryTweetsRun <- function(tweetRows=NULL,
   for (curFold in folds)
   {
     foldNum <- foldNum + 1
-    cat("  Fold", foldNum, ": ")
+    print(paste("  Fold", foldNum, ": of", dim(curFold)[1], "rows"))
 
-    docTerms <- buildDocTermMatrix(curFold, verbose)
+    docTerms <- buildDocTermMatrix(curFold, verbose=FALSE)
+    #inspect(docTerms)
     
     # build container for this fold = train versus test rows and label
     container = create_container(
@@ -368,11 +419,11 @@ tryTweetsRun <- function(tweetRows=NULL,
     }
     
     # Save results to the file system if specified
-    if (!is.null(saveToFolder) && length(saveToFolder) > 0)
+    if (is.null(saveToFolder) == FALSE && length(saveToFolder) > 0)
     {
       print("Saving model and results...")
       
-      if (!dir.exists(saveToFolder))
+      if (dir.exists(saveToFolder) == FALSE)
       {
         dir.create(saveToFolder)
       }
@@ -403,7 +454,7 @@ tryTweetsRun <- function(tweetRows=NULL,
   # model summary - print out more details when we are running 
   # one algorithm and one fold (and asked for verbose output)
   
-  if (verbose == TRUE && length(algos) == 1 && doJustOneFold)
+  if (verbose == TRUE && length(algos) == 1 && doJustOneFold==TRUE)
   {
     #print("Analytics: ")
     #analytics = create_analytics(container, results)
@@ -485,11 +536,11 @@ trainAndPredict <- function(tweetRowsTrain, predictRows, verbose=FALSE, saveToFo
   results = classify_models(container, models)
 
   # save off trained classifier, container, labels and results
-  if (!is.null(saveToFolder) && length(saveToFolder) > 0)
+  if (is.null(saveToFolder) == FALSE && length(saveToFolder) > 0)
   {
     print("Saving model and results...")
     
-    if (!dir.exists(saveToFolder))
+    if (dir.exists(saveToFolder) == FALSE)
     {
       dir.create(saveToFolder)
     }
@@ -506,7 +557,7 @@ trainAndPredict <- function(tweetRowsTrain, predictRows, verbose=FALSE, saveToFo
 buildAllLabeledFromCsvs <- function(marchSentimentColumnName = "sentiment", saveToCsvPath = NULL)
 {
   
-  # These files much have the columns listed in readMiniDataFrame,
+  # These files much have the columns listed in readLabeledDataFrame,
   # and the column values must be similar (ie: "neutral" != "Neutral", 
   # "Trump" != "trump", etc)
   AugCsvPath <- "AugSentiment.csv"
@@ -521,8 +572,8 @@ buildAllLabeledFromCsvs <- function(marchSentimentColumnName = "sentiment", save
   
   # We now have three data frames with consistent column names
   allLabeled <- rbind(augSentiment, marchb4sentiment, marchAfterSentiment)
-  
-  if (!is.null(saveToCsvPath) && length(saveToCsvPath))
+
+  if (is.null(saveToCsvPath)== FALSE && length(saveToCsvPath) > 0)
   {
     # August data has some linefeeds that causes excel problems
     # NOTE: August also is a UTF-8 file and March isn't - so we save as UTF-8
@@ -577,7 +628,7 @@ readLabeledDataFrame <- function(csvPath, idColumn = "id", sentimentColumnName =
 buildAllUnlabeledFromCsvs <- function(saveToCsvPath = NULL)
 {
   
-  # These files much have the columns listed in readMiniDataFrame,
+  # These files much have the columns listed in readLabeledDataFrame,
   # and the column values must be similar (ie: "neutral" != "Neutral", 
   # "Trump" != "trump", etc)
   marchB4Path <- "March10th_before_allunlabeled_forR.csv"
@@ -591,7 +642,7 @@ buildAllUnlabeledFromCsvs <- function(saveToCsvPath = NULL)
   
   allMarchUnlabeled <- rbind(allMarchUnlabeledB4, allMarchUnlabeledAfter)
   
-  if (!is.null(saveToCsvPath) && length(saveToCsvPath))
+  if (is.null(saveToCsvPath) == FALSE && length(saveToCsvPath) > 0)
   {
     # August data has some linefeeds that causes excel problems
     # NOTE: August also is a UTF-8 file and March isn't - so we save as UTF-8
@@ -802,7 +853,7 @@ predictLabelsAfterTraining <- function(dropNeutrals = TRUE, csvOutputPath = "UnL
   # At the moment, we are going with the consensus label
   allPredictions$predictedLabel <- docResults$CONSENSUS_CODE
 
-  if (!is.null(csvOutputPath))
+  if (is.null(csvOutputPath) == FALSE)
   {
     allPredictions$text <- replaceLineFeedsFromColumn(allPredictions$text)  
     
