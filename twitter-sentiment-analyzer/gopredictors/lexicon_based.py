@@ -98,19 +98,19 @@ def preprocess(data_file):
             senti_scr += -1
 
         if senti_scr > 0:
-            if sentiment == '|Positive|':
+            if sentiment == '|positive|':
                 count += 1
             else:
                 print sentiment, senti_scr
         elif senti_scr < 0:
-            if sentiment == '|Negative|':
+            if sentiment == '|negative|':
                 count += 1
             else:
                 print sentiment, senti_scr
-        elif senti_scr==0 and sentiment == '|Neutral|':
+        elif senti_scr==0 and sentiment == '|neutral|':
                 count += 1
         else:
-            print sentiment , senti_scr
+            print sentiment , senti_scr , tweet
 
         cleanTweets.append((cleanedTks, sentiment))
     print count,len(tweets)
@@ -155,8 +155,8 @@ def calSentimentScore(tokens):
 
 if __name__=='__main__':
     NGRAMSFLAG = True
-    data_file = 'data/gop/august/august_candidates_form.csv'
-    sentiment_word_file = 'data/AFINN-111.txt'
+    data_file = '../data/gop/march/combined_sample_unique_quote_form.csv'
+    sentiment_word_file = '../data/AFINN-111.txt'
     SENTIMENTDICT = readSenWdFile(sentiment_word_file)
 
     cleanTweets = preprocess(data_file)
