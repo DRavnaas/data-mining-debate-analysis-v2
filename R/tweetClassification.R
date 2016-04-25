@@ -927,6 +927,15 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=TRUE)
   
   y <- as.factor(allLabeled$sentiment)
 
+  # sentiment,predictedLabel,actualLabel,maxEntPrediction,maxEntProbability,svmPrediction,svmProbability,glmnetPrediction,glmnetProbability,consensusCount,probabilityLabel,consensusLabel,python_sentiment,ensemble_pos,ensemble_neg,lexicon pos,lexicon_neu,ensemble_neg,lexicon_compound
+  sampleColNames <- c(
+                  "maxEntPrediction", "maxEntProbability", 
+                   "svmPrediction", "svmnetProbability", 
+                   "glmnetPrediction", "glmnetProbability",
+                   "consensusCount", "probabilityLabel", "consensusLabel",
+                    "ensemble_pos", "ensemble_neg", "lexicon_pos",
+                    "lexicon_neu"  , "ensemble_neg", "lexicon_compound")
+  
   if (tryJustNeutralOrNot == TRUE)
   {
     # Basically turn this into an 'is neutral' flag
@@ -948,7 +957,9 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=TRUE)
                         allLabeled$consensusCount,
                         allLabeled$probabilityLabel,
                         allLabeled$consensusLabel,
+                        
                         #allLabeled$python_sentiment,
+    
                         allLabeled$ensemble_pos,
                         allLabeled$ensemble_neg,
                         allLabeled$lexicon_pos,
@@ -956,19 +967,7 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=TRUE)
                         allLabeled$ensemble_neg,
                         allLabeled$lexicon_compound)
   
-  colnames(x) <- c("maxEntPrediction", "maxEntProbability", 
-                       "svmPrediction", "svmnetProbability", 
-                       "glmnetPrediction", "glmnetProbability",
-                       "consensusCount", "probabilityLabel", "consensusLabel",
-                       "ensemble_pos", "ensemble_neg", "lexicon_pos",
-                       "lexicon_neu"  , "ensemble_neg", "lexicon_compound")
-  
-  # sentiment,predictedLabel,actualLabel,maxEntPrediction,maxEntProbability,svmPrediction,svmProbability,glmnetPrediction,glmnetProbability,consensusCount,probabilityLabel,consensusLabel,python_sentiment,ensemble_pos,ensemble_neg,lexicon pos,lexicon_neu,ensemble_neg,lexicon_compound
-
-  # TODO: we have a bad value around 8625/8626
-  #x <- x[1:8600,]
-  #y <- y[1:8600]
-  #second <- second[1:8600]
+  colnames(x) <- sampleColNames
     
   svmModel <- svm(x, y) 
   
@@ -993,7 +992,9 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=TRUE)
                             sample$consensusCount,
                             sample$probabilityLabel,
                             sample$consensusLabel,
+  
                         #allLabeled$python_sentiment,
+  
                         sample$ensemble_pos,
                         sample$ensemble_neg,
                         sample$lexicon_pos,
@@ -1001,12 +1002,7 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=TRUE)
                         sample$ensemble_neg,
                         sample$lexicon_compound)
   
-  colnames(x) <- c("maxEntPrediction", "maxEntProbability", 
-                   "svmPrediction", "svmnetProbability", 
-                   "glmnetPrediction", "glmnetProbability",
-                   "consensusCount", "probabilityLabel", "consensusLabel",
-                   "ensemble_pos", "ensemble_neg", "lexicon_pos",
-                   "lexicon_neu"  , "ensemble_neg", "lexicon_compound")
+  colnames(x) <- sampleColNames
   
   print(paste("Predictions on labeled sample from March:"))
   
