@@ -919,3 +919,108 @@ dropNeutrals <- function(tweetRows)
   tweetsNoNeutral
   
 }
+
+
+tryLabellingJustNeutral <- function(tryJustNeutralOrNot=FALSE)
+{
+  allLabeled <- read.csv("labeledWithPredictionsQuoteEdit.csv", sep=",")
+  
+  if (tryJustNeutralOrNot == TRUE)
+  {
+    # Basically turn this into an 'is neutral' flag
+    first <-  gsub("Negative", "NotNeutral", allLabeled$sentiment)
+    second <- gsub("Positive", "NotNeutral", first)
+    #y <- as.numeric(as.factor(third))
+    y <- as.factor(second)
+  }
+  else {
+    y <- as.factor(allLabeled$sentiment)
+  }
+  
+  
+  print(paste("# rows read in = ", dim(allLabeled)[1]))
+  
+  x <- cbind.data.frame(allLabeled$maxEntPrediction,
+                        allLabeled$maxEntProbability,
+                        allLabeled$svmPrediction,
+                        allLabeled$svmProbability,
+                        allLabeled$glmnetPrediction,
+                        allLabeled$glmnetProbability,
+                        allLabeled$consensusCount,
+                        allLabeled$probabilityLabel,
+                        allLabeled$consensusLabel,
+                        #allLabeled$python_sentiment,
+                        allLabeled$ensemble_pos,
+                        allLabeled$ensemble_neg,
+                        allLabeled$lexicon_pos,
+                        allLabeled$lexicon_neu,
+                        allLabeled$ensemble_neg,
+                        allLabeled$lexicon_compound)
+  
+  colnames(x) <- c("maxEntPrediction", "maxEntProbability", "svmPrediction", "glmnetPrediction", "glmnetProbability",
+                "consensusCount", "probabilityLabel", "ensemble_pos", "ensemble_neg", "lexicon_pos",
+                  "lexicon_neu"  , "ensemble_neg", "lexicon_compound")
+  
+  # sentiment,predictedLabel,actualLabel,maxEntPrediction,maxEntProbability,svmPrediction,svmProbability,glmnetPrediction,glmnetProbability,consensusCount,probabilityLabel,consensusLabel,python_sentiment,ensemble_pos,ensemble_neg,lexicon pos,lexicon_neu,ensemble_neg,lexicon_compound
+
+  # TODO: we have a bad value around 8625/8626
+  #x <- x[1:8600,]
+  #y <- y[1:8600]
+  #second <- second[1:8600]
+    
+  model <- svm(x, y) 
+  
+  pred <- predict(model, x)
+  
+  print(paste("Predictions made!"))
+  predAndY <- cbind.data.frame(pred, y, second)
+  
+  print( table(pred, y) )
+  
+  
+  sample <- read.csv("Sample_CombinedResultsWithAllStats.csv")
+  sample <- sample[1:100,]
+  
+  sampx <- cbind.data.frame(sample$maxEntPrediction,
+                            sample$maxEntProbability,
+                            sample$svmPrediction,
+                            sample$svmProbability,
+                            sample$glmnetPrediction,
+                            sample$glmnetProbability,
+                            sample$consensusCount,
+                            sample$probabilityLabel,
+                            sample$consensusLabel,
+                        #allLabeled$python_sentiment,
+                        sample$ensemble_pos,
+                        sample$ensemble_neg,
+                        sample$lexicon_pos,
+                        sample$lexicon_neu,
+                        sample$ensemble_neg,
+                        sample$lexicon_compound)
+  
+  colnames(sampx) <- c("maxEntPrediction", "maxEntProbability", "svmPrediction", "glmnetPrediction", "glmnetProbability",
+                   "consensusCount", "probabilityLabel", "ensemble_pos", "ensemble_neg", "lexicon_pos",
+                   "lexicon_neu"  , "ensemble_neg", "lexicon_compound")
+  
+  pred <- predict(model, sampx)
+  
+  sampy <- sample$X.correct..human.label
+  
+  if (tryJustNeutralOrNot == TRUE)
+  {
+    firsty <- gsub("1", "NotNeutral", as.charaacter(sampy))
+    firsty <- gsub("3", "NotNeutral", as.charaacter(firsty))
+    firsty <- gsub("2", "Neutral", as.charaacter(firsty))
+    newsampy <- as.factor(firsty)
+  }
+  else {
+    firsty <- gsub("1", "Negative", as.charaacter(sampy))
+    firsty <- gsub("3", "Positive", as.charaacter(firsty))
+    firsty <- gsub("2", "Neutral", as.character(firsty))
+    newsampy <- as.factor(sampy)
+  }
+  
+  print( table(pred, sampy) )
+  
+  #predAndY
+}
