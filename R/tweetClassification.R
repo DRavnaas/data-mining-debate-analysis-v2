@@ -1,8 +1,19 @@
+
+  # Flip doInstall to TRUE to install packages required by this R file
+
+doInstall <- FALSE
+toInstall <- c("maps", "ggplot2", "RTextTools", "caret", "RWeka", "tm", "e1071")
+if(doInstall){install.packages(toInstall, repos = "http://cran.us.r-project.org")}
+  lapply(toInstall, library, character.only = TRUE)
+
+library(ggplot2)
+library(maps)
 library(RTextTools)
 library(caret)
 library(RWeka)
 library(tm)
 library(e1071)
+
 
 # method - trainAndEvaluate - August and March, or a particular CSV
 
@@ -1031,3 +1042,55 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=TRUE)
   save(svmModel, file="svmModel.RData")
   #predAndY
 }
+
+
+
+
+tryUSAMap <- function(titleSuffix="") 
+{
+  #Prison <- read.csv("http://www.oberlin.edu/faculty/cdesante/assets/downloads/prison.csv")
+  #head(Prison)
+  #Prison$region <- Prison$stateName
+  
+
+    
+  all_states <- map_data("state")
+  all_states
+  head(all_states)
+
+  # this will have to change for the state/region
+  
+
+  Prison <- read.csv("states.csv")
+  Prison$region <- Prison$State
+   
+  
+  Total <- merge(all_states, Prison, by="region")
+  
+  #Mainland us only
+  #head(Total)
+  #Total <- Total[Total$region!="district of columbia",]
+  Total <- Total[Total$region!="alaska",]
+  Total <- Total[Total$region!="hawaii",]
+  
+  Total <- Total[order(Total$order),] 
+  
+  plotTitle <- paste("Tweet Sentiment by State, Mainland US", titleSuffix)
+  legend <- "Tweet sentiment for a candidate (clarify)"
+  
+  # color on Total$bwRatio
+  Total$bwRatio <- Total$posRatio
+  
+  # TODO - neutral = 0.5 = white - ensure no NA in data.
+  
+  p <- ggplot()
+  p <- p + geom_polygon(data=Total, aes(x=long, y=lat, group = group, fill=Total$bwRatio),colour="white"
+                        ) + scale_fill_gradientn(colors=c("darkgreen","green","grey50","thistle2","red","darkred"))
+
+                          #) + scale_fill_continuous(low = "darkgreen", high = "darkred", guide="colorbar")
+  P1 <- p + theme_bw()  + labs(fill = legend 
+                               ,title = plotTitle, x="", y="")
+  P1 + scale_y_continuous(breaks=c()) + scale_x_continuous(breaks=c()) + theme(panel.border =  element_blank())
+  
+}
+

@@ -1,0 +1,52 @@
+State,Abbreviation,negRatio,posRatio
+alabama,AL,0.2,0.8
+alaska,AK,0.2,0.8
+arizona,AZ,0.5,0.5
+arkansas,AR,0.2,0.8
+california,CA,0.2,0.8
+colorado,CO,0.2,0.8
+connecticut,CT,0.2,0.8
+delaware,DE,0.2,0.8
+district of columbia,DC,0.2,0.8
+florida,FL,0.9,0.1
+georgia,GA,0.2,0.8
+hawaii,HI,0.2,0.8
+idaho,ID,0.2,0.8
+illinois,IL,0,1
+indiana,IN,0.2,0.8
+iowa,IA,0.2,0.8
+kansas,KS,0,1
+kentucky,KY,0.2,0.8
+louisiana,LA,0.2,0.8
+maine,ME,0.2,0.8
+maryland,MD,0.2,0.8
+massachusetts,MA,0.2,0.8
+michigan,MI,0.2,0.8
+minnesota,MN,0.2,0.8
+mississippi,,0.2,0.8
+missouri,MO,0.2,0.8
+montana,MT,0.2,0.8
+nebraska,NE,0.2,0.8
+nevada,NV,0.2,0.8
+new hampshire,NH,0.2,0.8
+new jersey,NJ,0.2,0.8
+new mexico,NM,0.2,0.8
+new york,NY,0.2,0.8
+north carolina,NC,0.2,0.8
+north dakota,ND,0.2,0.8
+ohio,OH,0.2,0.8
+oklahoma,OK,0.2,0.8
+oregon,OR,0.2,0.8
+pennsylvania,PA,0.2,0.8
+rhode island,RI,0.2,0.8
+south carolina,SC,0.2,0.8
+south dakota,SD,0.2,0.8
+tennessee,TN,0.2,0.8
+texas,TX,0.2,0.8
+utah,UT,0.2,0.8
+vermont,VT,0.2,0.8
+virginia,VA,0.2,0.8
+washington,WA,0.2,0.8
+west virginia,WV,0.2,0.8
+wisconsin,WI,0.2,0.8
+wyoming,WY,0.2,0.8
