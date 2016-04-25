@@ -1079,13 +1079,24 @@ tryUSAMap <- function(titleSuffix="")
   legend <- "Tweet sentiment for a candidate (clarify)"
   
   # color on Total$bwRatio
-  Total$bwRatio <- Total$posRatio
+  Total$bwRatio <- Total$negRatio
   
-  # TODO - neutral = 0.5 = white - ensure no NA in data.
+  # colors built below assume negRatio ordering
+  
+  numColorsEachSide <- 3
+  greens <- colorRampPalette(c("darkgreen", "white"))
+  posColors <- greens(numColorsEachSide+1)
+  
+  reds <- colorRampPalette(c("darkred", "white"))
+  negColors <- reds(numColorsEachSide+1)
+  
+  # build color list, clipping white out of each
+  colors <- c(posColors[1:numColorsEachSide], "grey75", negColors[numColorsEachSide:1])
   
   p <- ggplot()
   p <- p + geom_polygon(data=Total, aes(x=long, y=lat, group = group, fill=Total$bwRatio),colour="white"
-                        ) + scale_fill_gradientn(colors=c("darkgreen","green","grey50","thistle2","red","darkred"))
+                        ) + scale_fill_gradientn(colors=colors)
+                                                   # c("darkgreen","green","grey50","thistle2","red","darkred"))
 
                           #) + scale_fill_continuous(low = "darkgreen", high = "darkred", guide="colorbar")
   P1 <- p + theme_bw()  + labs(fill = legend 
