@@ -10,16 +10,16 @@ library(e1071)
 # save algorithm probabilities and run through SVM for prediction, save trained svm model
 
 #   trainAndEvaluate - trains on a set and does 5 fold validation - good for evaluating tuning
-#   trainAndPredict - trains on full set, then makes predictions on that set
+#   trainAndPredictOnAllLabeled - trains on the Aug and March labeled set, then makes predictions on that set
 #   predictLabelsAfterTraining - trains on a labeled set, then makes predictions on unlabelled set
 
 # see github for various data files
 # https://github.com/yogimiraje/data-mining-debate-analysis/tree/master/R
 #  AugSentiment.csv = the original sentiment file from Kaggle/Crowdflower
-#  March10th_before_labeled.csv.txt = hand labeled sample of March tweets before the debate
-#  March10th_all_labeled.csv.txt = hand labeled sample of March tweets before the debate
-#  AllLabeledMini.csv - August and March labeled tweets, "common" 12 columns
-#  AllLabeledQuoteMini.csv - August with sentiment, March with quote sentiment, labeled tweets
+#  March10th_before_labeledForR.csv = hand labeled sample of March tweets before the debate
+#  March10th_all_labeledForR.csv = hand labeled sample of March tweets before the debate
+#  AugAndMarchLabeled.csv - August and March labeled tweets, "common" columns
+#  AugAndMarchLabeledQuote.csv - August with sentiment, March with quote sentiment, labeled tweets
 
 # Primary references used for transforming tweets for R:
 # 
@@ -33,7 +33,7 @@ library(e1071)
 
 # Train and evaluate an ensemble (default = on both Aug and March labeled data)
 # optionally does 5 fold cross validation and saves the trained model and results
-trainAndEvaluate <- function(csvPath="AllLabeledQuoteMini.csv", 
+trainAndEvaluate <- function(csvPath="AugAndMarchLabeledQuote.csv", 
                              verbose=FALSE, 
                              doJustOneFold=FALSE,
                              saveToFolder=NULL)
@@ -56,6 +56,7 @@ tryTweetsNoNeutral <- function(csvPath="AugSentiment.csv",
       encoding = "UTF-8"
     )
   
+  # When these go through as.factor, 1 = Negative, 3 = Positive
   print(paste("# rows before removing neutrals = ", dim(tweetRows)[1]))
   numPositive <- dim(tweetRows[tweetRows$sentiment=="Positive",])[1]
   numNeutral <- dim(tweetRows[tweetRows$sentiment=="Neutral",])[1]
@@ -83,7 +84,7 @@ tryTweetsNoNeutral <- function(csvPath="AugSentiment.csv",
     
   }
     
-tryTweetsRun(tweetRows=tweetsNoNeutral, verbose, doJustOneFold, saveToFolder)
+  tryTweetsRun(tweetRows=tweetsNoNeutral, verbose, doJustOneFold, saveToFolder)
 }
 
 tryTweetsWithNeutral<- function(csvPath="AugSentiment.csv", 
@@ -104,7 +105,7 @@ tryTweetsWithNeutral<- function(csvPath="AugSentiment.csv",
   numPositive <- dim(tweetRows[tweetRows$sentiment=="Positive",])[1]
   numNeutral <- dim(tweetRows[tweetRows$sentiment=="Neutral",])[1]
   numNegative <- dim(tweetRows[tweetRows$sentiment=="Negative",])[1]
-  print(paste("# positive = ", numPositive, ", # neutral = ", numNeutral, ", # negative =", numNegative))
+  print(paste("# positive =", numPositive, ", # neutral =", numNeutral, ", # negative =", numNegative))
     
   tryTweetsRun(tweetRows, verbose, doJustOneFold, saveToFolder)
 }
@@ -239,6 +240,7 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
 # Main helper function to train and evaluate input tweets
 tryTweetsRun <- function(tweetRows=NULL, 
                             verbose=FALSE, 
+                            testRows=NULL,
                             doJustOneFold=TRUE, 
                             saveToFolder=NULL)
 {
@@ -252,10 +254,19 @@ tryTweetsRun <- function(tweetRows=NULL,
   folds <- buildFolds(tweetRows)
   foldNum <- 0
     
-  numRows <- dim(tweetRows)[1]
-  endTrain <- as.integer(.8 * numRows)
-  trainRows <- 1:endTrain
-  testRows <-    (endTrain+1):numRows
+  if (is.null(testRows))
+  {
+    numRows <- dim(tweetRows)[1]
+    endTrain <- as.integer(.8 * numRows)
+    trainRows <- 1:endTrain
+    testRows <-    (endTrain+1):numRows
+  }
+  else {
+    # This is useful for running on March only (w doJustOneFold=TRUE), for example.
+    numRows <- dim(tweetRows)[1]
+    endTrain <- numRows - length(testRows)
+    trainRows <- 1:endTrain
+  }
   
   if (length(trainRows) + length(testRows) != numRows)
   {
@@ -429,7 +440,7 @@ tryTweetsRun <- function(tweetRows=NULL,
 
 # Trains on a labeled set and then makes predictions on a labeled set
 # using the trained model - returns results 
-trainAndPredict <- function(tweetRowsTrain, predictRows, verbose=FALSE, saveToFolder=TRUE)
+trainAndPredict <- function(tweetRowsTrain, predictRows, verbose=FALSE, saveToFolder=NULL)
 {
   if (verbose == TRUE)
   {
@@ -492,33 +503,37 @@ trainAndPredict <- function(tweetRowsTrain, predictRows, verbose=FALSE, saveToFo
   
 }
 
-buildAllMiniFromCsvs <- function(marchSentimentColumnName = "sentiment", saveMiniFile = NULL)
+buildAllLabeledFromCsvs <- function(marchSentimentColumnName = "sentiment", saveToCsvPath = NULL)
 {
+  
   # These files much have the columns listed in readMiniDataFrame,
   # and the column values must be similar (ie: "neutral" != "Neutral", 
   # "Trump" != "trump", etc)
   AugCsvPath <- "AugSentiment.csv"
-  marchB4Path <- "March10th_before_labeled.csv.txt"
-  marchAfterPath <- "March10th_after_labeled.csv.txt"
+  marchB4Path <- "March10th_before_labeledforR.csv"
+  marchAfterPath <- "March10th_after_labeledforR.csv"
+
+  print(paste("Reading labeled rows from", AugCsvPath, ",", marchB4Path, ",", marchAfterPath))
   
-  augSentiment <- readMiniDataFrame(AugCsvPath)
-  
-  # The march csvs have three sentiment columns, and the UTF-8 BOM ends up in the first column name
-  marchb4sentiment <- readMiniDataFrame(marchB4Path, "X.U.FEFF.id", marchSentimentColumnName)
-  marchAfterSentiment <- readMiniDataFrame(marchAfterPath, "X.U.FEFF.id", marchSentimentColumnName)
+  augSentiment <- readLabeledDataFrame(AugCsvPath)
+  marchb4sentiment <- readLabeledDataFrame(marchB4Path, sentimentColumnName=marchSentimentColumnName)
+  marchAfterSentiment <- readLabeledDataFrame(marchAfterPath, sentimentColumnName=marchSentimentColumnName)
   
   # We now have three data frames with consistent column names
-  allMini <- rbind(augSentiment, marchb4sentiment, marchAfterSentiment)
+  allLabeled <- rbind(augSentiment, marchb4sentiment, marchAfterSentiment)
   
-  if (!is.null(saveMiniFile) && length(saveMiniFile))
+  if (!is.null(saveToCsvPath) && length(saveToCsvPath))
   {
-    write.csv(allMini, saveMiniFile, fileEncoding = "UTF-8")
+    # August data has some linefeeds that causes excel problems
+    # NOTE: August also is a UTF-8 file and March isn't - so we save as UTF-8
+    allLabeled$text <- replaceLineFeedsFromColumn(allLabeled$text) 
+    write.csv(allLabeled, saveToCsvPath, fileEncoding = "UTF-8")
   }
   
-  allMini  
+  allLabeled  
 }
 
-readMiniDataFrame <- function(csvPath, idColumn = "id", sentimentColumnName = "sentiment")
+readLabeledDataFrame <- function(csvPath, idColumn = "id", sentimentColumnName = "sentiment")
 {
   fulldataFrame <- read.csv(
     csvPath,
@@ -557,66 +572,110 @@ readMiniDataFrame <- function(csvPath, idColumn = "id", sentimentColumnName = "s
   miniDataFrame
 }
 
-# A quick Naive Bayes test
-tryTweetsNB <- function(csvPath="AugSentiment.csv")
+# Build and optionall save off the unlabeled tweet data
+# unLabeledTweets <- biuldAllUnlabeledFromCsvs("UnlabeledMarchForR.csv")
+buildAllUnlabeledFromCsvs <- function(saveToCsvPath = NULL)
 {
-  tweetRows <-
-    read.csv(csvPath,
-             header = TRUE)
-  print(paste("# rows read = ", dim(tweetRows)[1]))
   
-  docTerms <- buildDocTermMatrix(tweetRows)
-  featureMatrix <- as.matrix(docTerms)
-
-  cat("Running Naive Bayes...")
-    
-  numRows <- as.matrix(dim(tweetRows))[1,1]
-  endTrain <- as.integer(.8 * numRows)
-  trainRows <- 1:endTrain
-  testRows <-    (endTrain+1):numRows
+  # These files much have the columns listed in readMiniDataFrame,
+  # and the column values must be similar (ie: "neutral" != "Neutral", 
+  # "Trump" != "trump", etc)
+  marchB4Path <- "March10th_before_allunlabeled_forR.csv"
+  marchAfterPath <- "March10th_after_allunlabeled_forR.csv"
   
-  classifier <- naiveBayes(featureMatrix[trainRows], as.factor(tweetRows$sentiment[trainRows]))
-  predicted <- predict(classifier, featureMatrix[testRows])
-
-  recallStats <-
-    recall_accuracy(tweetRows$sentiment[testRows], predicted)
+  print(paste("Reading unlabeled rows from", marchB4Path, ",", marchAfterPath))
   
-  cat("Prediction accuracy: ", recallStats)
+  # unlabeled data
+  allMarchUnlabeledB4 <- readUnlabeledDataFrame(marchB4Path)
+  allMarchUnlabeledAfter <- readUnlabeledDataFrame(marchAfterPath)
+  
+  allMarchUnlabeled <- rbind(allMarchUnlabeledB4, allMarchUnlabeledAfter)
+  
+  if (!is.null(saveToCsvPath) && length(saveToCsvPath))
+  {
+    # August data has some linefeeds that causes excel problems
+    # NOTE: August also is a UTF-8 file and March isn't - so we save as UTF-8
+    allMarchUnlabeled$text <- replaceLineFeedsFromColumn(allMarchUnlabeled$text) 
+    write.csv(allMarchUnlabeled, saveToCsvPath, fileEncoding = "UTF-8")
+  }
+  
+  allMarchUnlabeled  
+  
+ 
+   
 }
 
-# For easy use of excel with our output csvs, turn linefeeds
-# in the text column into spaces
-replaceLineFeedsFromColumn <- function(columnOfText)
+# Read in an unlabeled file 
+# There's probably a smart way to refactor with with readLabeledDataFrame?
+readUnlabeledDataFrame <- function(csvPath, idColumn = "id")
 {
-  gsub("\n", " ", columnOfText)
+  fulldataFrame <- read.csv(
+    csvPath,
+    header = TRUE,
+    encoding = "UTF-8"
+  )
+  
+  print(paste("# rows read = ", dim(fulldataFrame)[1]))
+  
+  if (dim(fulldataFrame)[2] < 20)
+  {
+    # March files can have a couple columns we have to shift around.
+    # (TODO: this might not be needed now?)
+    fulldataFrame$id <- fulldataFrame[,idColumn]
+    
+    #print(fulldataFrame$id[1])
+    #print(fulldataFrame$sentiment[1])
+  }
+  
+  miniDataFrame <- cbind.data.frame(fulldataFrame$id, 
+                                    fulldataFrame$tweet_id,
+                                    fulldataFrame$candidate, 
+                                    fulldataFrame$tweet_created,
+                                    fulldataFrame$tweet_location,
+                                    fulldataFrame$user_timezone,  
+                                    fulldataFrame$text
+  )
+  
+  
+  colnames(miniDataFrame) <- c("id", "tweet_id", "candidate", "tweet_created", 
+                               "tweet_location", "user_timezone", "text")
+  
+  
+  miniDataFrame
+}
+
+
+# Read in the labeled set, train on the entire set, then predict on that set.
+# Output a file with tweet data and predictions (UTF-8)
+trainAndPredictOnAllLabeled <- function(verbose=FALSE, marchSentimentColumnName = "quote_sentiment", dropNeutrals=TRUE, saveToCsvPath="LabeledWithPredictionsQuote.csv")
+{
+  allLabeled <- buildAllLabeledFromCsvs(marchSentimentColumnName)
+  
+  if (dropNeutrals == TRUE)
+  {
+    allLabeled <- dropNeutrals(allLabeled)
+  }
+  
+  predictOnTrainingSet(allLabeled, verbose, saveToCsvPath)
 }
 
 # Outputs a csv with predictions on a given training set
 # Since training = the prediction set, the accuracy for this is 
 # misleadingly high - but used for initial success metric work.
-predictOnTrainingSet <- function(saveToFolder=NULL)
+predictOnTrainingSet <- function(tweetRows, verbose=FALSE, saveToCsvPath)
 {
-  allMini <- read.csv("AllLabeledQuoteMini2.csv", header=TRUE, encoding="UTF-8", fileEncoding="UTF-8")
+  # Our train and test rows are exactly the same.
   
-  allMiniNoNeutral <- tweetRows[allMini$sentiment!="Neutral",]
+  numRows <- dim(tweetRows)[1]
+ 
+  trainRows <- 1:numRows
+  testRows <- 1:numRows
   
-  # Combine so we train on full test and predict on full set
-  allMiniNoNeutralx2 <- rbind(allMiniNoNeutral, allMiniNoNeutral)
+  docTerms <- buildDocTermMatrix(tweetRows, verbose=FALSE)
   
-  numRows <- dim(allMiniNoNeutralx2)[1]
-  endTrain <- as.integer(.5 * numRows)
-  trainRows <- 1:endTrain
-  testRows <-    (endTrain+1):numRows
-  
-  docTerms <- buildDocTermMatrix(allMiniNoNeutralx2, verbose=FALSE)
-  
-  # TODO: This is training on the first half and then testing on those
-  # same rows we copied to the second half, which is a bit of a hack
-  # Rework to separate train and test data 
-  # http://www.inside-r.org/packages/cran/RTextTools/docs/create_container
   container = create_container(
     docTerms,
-    as.numeric(as.factor(allMiniNoNeutralx2$sentiment)),
+    as.numeric(as.factor(tweetRows$sentiment)),
     trainSize = trainRows,
     testSize = testRows,
     virgin = FALSE
@@ -632,70 +691,55 @@ predictOnTrainingSet <- function(saveToFolder=NULL)
   analytics = create_analytics(container, results)
   docResults <- analytics@document_summary
   
+  print("done!")
+  print(analytics@ensemble_summary)
+  
+  # Build an output data frame with all the various ensemble label results
   predictedSentiment <- docResults$CONSENSUS_CODE
   
-  allMiniNoNeutralWithPrediction <- allMiniNoNeutral
-  allMiniNoNeutralWithPrediction$predictedLabel <- docResults$CONSENSUS_CODE
-  allMiniNoNeutralWithPrediction$actualLabel <- docResults$MANUAL_CODE
-  allMiniNoNeutralWithPrediction$maxEntPrediction <- docResults$MAXENTROPY_LABEL
-  allMiniNoNeutralWithPrediction$maxEntProbability <- docResults$MAXENTROPY_PROB
-  allMiniNoNeutralWithPrediction$svmPrediction <- docResults$SVM_LABEL
-  allMiniNoNeutralWithPrediction$svmProbability <- docResults$SVM_PROB
-  allMiniNoNeutralWithPrediction$glmnetPrediction <- docResults$GLMNET_LABEL
-  allMiniNoNeutralWithPrediction$glmnetProbability <- docResults$GLMNET_PROB
-  allMiniNoNeutralWithPrediction$consensusCount <- docResults$CONSENSUS_AGREE
-  allMiniNoNeutralWithPrediction$probabilityLabel <- docResults$PROBABILITY_CODE
-  allMiniNoNeutralWithPrediction$consensusLabel <- docResults$CONSENSUS_CODE
+  tweetRowsWithPrediction <- tweetRows
+  tweetRowsWithPrediction$predictedLabel <- docResults$CONSENSUS_CODE
+  tweetRowsWithPrediction$actualLabel <- docResults$MANUAL_CODE
+  tweetRowsWithPrediction$maxEntPrediction <- docResults$MAXENTROPY_LABEL
+  tweetRowsWithPrediction$maxEntProbability <- docResults$MAXENTROPY_PROB
+  tweetRowsWithPrediction$svmPrediction <- docResults$SVM_LABEL
+  tweetRowsWithPrediction$svmProbability <- docResults$SVM_PROB
+  tweetRowsWithPrediction$glmnetPrediction <- docResults$GLMNET_LABEL
+  tweetRowsWithPrediction$glmnetProbability <- docResults$GLMNET_PROB
+  tweetRowsWithPrediction$consensusCount <- docResults$CONSENSUS_AGREE
+  tweetRowsWithPrediction$probabilityLabel <- docResults$PROBABILITY_CODE
+  tweetRowsWithPrediction$consensusLabel <- docResults$CONSENSUS_CODE
   
   # At the moment, we are going with the consensus label
-  allMiniNoNeutralWithPrediction$predictedLabel <- docResults$CONSENSUS_CODE
+  tweetRowsWithPrediction$predictedLabel <- docResults$CONSENSUS_CODE
 
-  allMiniNoNeutralWithPrediction$text <- replaceLineFeedsFromColumn(allMiniNoNeutralWithPrediction$text)  
-  write.csv(allMiniNoNeutralWithPrediction, "LabeledAndPredictedQuoteMini.csv", fileEncoding="UTF-8")
+  tweetRowsWithPrediction$text <- replaceLineFeedsFromColumn(tweetRowsWithPrediction$text) 
+  
+  print(paste("Saving results to ", saveToCsvPath))
+  write.csv(tweetRowsWithPrediction, saveToCsvPath, fileEncoding="UTF-8")
   
 }
 
 # Warning - this takes a long time for the gopdebate data set.
 # This method trains on the labeled set and then makes predictions on the unlabeled set
-predictLabelsAfterTraining <- function(saveToFolder=NULL)
+predictLabelsAfterTraining <- function(dropNeutrals = TRUE, csvOutputPath = "UnLabeledWithPredictions.csv")
 {
   # Read in and train our model
-  allMini <- read.csv("AllLabeledQuoteMini2.csv", header=TRUE, encoding="UTF-8", fileEncoding="UTF-8")
   
-  allMiniNoNeutral <- allMini[allMini$sentiment!="Neutral",]
+  allLabeled <- buildAllLabeledFromCsvs(marchSentimentColumnName)
   
-  allMiniTest <- cbind.data.frame(allMiniNoNeutral[,"id"],
-                                  allMiniNoNeutral[,"tweet_id"],
-                                  allMiniNoNeutral[,"candidate"],
-                                  allMiniNoNeutral[,"tweet_created"],
-                                  allMiniNoNeutral[,"tweet_location"],
-                                  allMiniNoNeutral[,"user_timezone"],
-                                  allMiniNoNeutral[,"text"],
-                                  allMiniNoNeutral[,"sentiment"])
+  if (dropNeutrals == TRUE)
+  {
+    allLabeled <- dropNeutrals(allLabeled)
+  }
+  
+  allMarchUnlabeled <- buildAllUnlabeledFromCsvs()
 
-  # unlabeled data
-  allMarchUnlabeledB4 <- read.csv("march10th_before_allunlabeled_forR.csv", header=TRUE)
-  allMarchUnlabeledAfter <- read.csv("march10th_after_allunlabeled_forR.csv", header=TRUE)
-  allMarchUnlabeled <- rbind(allMarchUnlabeledB4, allMarchUnlabeledAfter)
   allMarchUnlabeled$sentiment <- c("Positive",rep("Negative",c(nrow(allMarchUnlabeled)-1)))
-  
-  allTest <- cbind.data.frame(allMarchUnlabeled[,"id"],
-                              allMarchUnlabeled[,"tweet_id"],
-                              allMarchUnlabeled[,"candidate"],
-                              allMarchUnlabeled[,"tweet_created"],
-                              allMarchUnlabeled[,"tweet_location"],
-                              allMarchUnlabeled[,"user_timezone"],
-                              allMarchUnlabeled[,"text"],
-                              allMarchUnlabeled[,"sentiment"])
- 
-    
-  colnames(allTest) <- c("id", "tweet_id", "candidate", "tweet_created", "tweet_location",
-                         "user_timezone", "text", "sentiment")
-  colnames(allMiniTest) <- c("id", "tweet_id", "candidate", "tweet_created", "tweet_location",
-                         "user_timezone", "text", "sentiment")
-  allTrainAndUnlabeled <- rbind(allMiniTest, allTest)
-    
-  numRows <- dim(allMiniTest)[1]
+
+  allTrainAndUnlabeled <- rbind(allLabeled, allMarchUnlabeled)
+      
+  numRows <- dim(allLabeled)[1]
   endTrain <- numRows
   trainRows <- 1:endTrain
   testRows <- (endTrain+1):(endTrain+dim(allTest)[1])
@@ -716,12 +760,16 @@ predictLabelsAfterTraining <- function(saveToFolder=NULL)
   
   models = train_models(container, algorithms = algos)
   
+  print("Training done!")
+  
   # Now predict labels for the test rows
   # Note that any accuracy reported is bogus
   # since we faked the sentiment for the unlabeled rows.
   # But we will now have per row/ per algo prediction info.
   results = classify_models(container, models)  
 
+  print("Prediction done!")
+  
   # This all took forever, so let's save it.
   save(models, container, file = "AugAndMarchUnlabeledRun/trainedModels.RData")
   
@@ -754,12 +802,69 @@ predictLabelsAfterTraining <- function(saveToFolder=NULL)
   # At the moment, we are going with the consensus label
   allPredictions$predictedLabel <- docResults$CONSENSUS_CODE
 
-  allPredictions$text <- replaceLineFeedsFromColumn(allPredictions$text)  
+  if (!is.null(csvOutputPath))
+  {
+    allPredictions$text <- replaceLineFeedsFromColumn(allPredictions$text)  
+    
+    print(paste("Saving data and predictions to", csvOutputPath))
+    # this is march only for unlabeled so no need to save as utf-8
+    write.csv(allPredictions, csvOutputPath)
+  }
   
-  write.csv(allPredictions, "UnLabelePredictions.csv")
-  
-  # Can sample the results with
+  # Can sample the returned results with
   # numRows <- dim(allPredictions)[1]
-  # Sample <- allPredictions[sample(1:numRows,size=100,replace=FALSE),]
+  # predictSample <- allPredictions[sample(1:numRows,size=100,replace=FALSE),]
+  
+  allPredictions
+}
+
+# A quick Naive Bayes test
+tryTweetsNB <- function(csvPath="AugAndMarchLabeledQuote.csv")
+{
+  tweetRows <-
+    read.csv(csvPath,
+             header = TRUE)
+  print(paste("# rows read = ", dim(tweetRows)[1]))
+  
+  docTerms <- buildDocTermMatrix(tweetRows)
+  featureMatrix <- as.matrix(docTerms)
+  
+  cat("Running Naive Bayes...")
+  
+  numRows <- as.matrix(dim(tweetRows))[1,1]
+  endTrain <- as.integer(.8 * numRows)
+  trainRows <- 1:endTrain
+  testRows <-    (endTrain+1):numRows
+  
+  classifier <- naiveBayes(featureMatrix[trainRows], as.factor(tweetRows$sentiment[trainRows]))
+  predicted <- predict(classifier, featureMatrix[testRows])
+  
+  recallStats <-
+    recall_accuracy(tweetRows$sentiment[testRows], predicted)
+  
+  cat("Prediction accuracy: ", recallStats)
+}
+
+# For easy use of excel with our output csvs, turn linefeeds
+# in the text column into spaces
+replaceLineFeedsFromColumn <- function(columnOfText)
+{
+  gsub("\n", " ", columnOfText)
+}
+
+
+dropNeutrals <- function(tweetRows)
+{
+  # When these go through as.factor, 1 = Negative, 3 = Positive
+  print(paste("# rows before removing neutrals = ", dim(tweetRows)[1]))
+  numPositive <- dim(tweetRows[tweetRows$sentiment=="Positive",])[1]
+  numNeutral <- dim(tweetRows[tweetRows$sentiment=="Neutral",])[1]
+  numNegative <- dim(tweetRows[tweetRows$sentiment=="Negative",])[1]
+  print(paste("# positive = ", numPositive, ", # neutral = ", numNeutral, ", # negative =", numNegative))
+ 
+  tweetsNoNeutral <- tweetRows[tweetRows$sentiment!="Neutral",]
+  print(paste("# rows after removing neutrals = ", dim(tweetsNoNeutral)[1]))
+  
+  tweetsNoNeutral
   
 }
