@@ -921,10 +921,12 @@ dropNeutrals <- function(tweetRows)
 }
 
 
-tryLabellingJustNeutral <- function(tryJustNeutralOrNot=FALSE)
+tryLabellingJustNeutral <- function(tryJustNeutralOrNot=TRUE)
 {
   allLabeled <- read.csv("labeledWithPredictionsQuoteEdit.csv", sep=",")
   
+  y <- as.factor(allLabeled$sentiment)
+
   if (tryJustNeutralOrNot == TRUE)
   {
     # Basically turn this into an 'is neutral' flag
@@ -932,9 +934,6 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=FALSE)
     second <- gsub("Positive", "NotNeutral", first)
     #y <- as.numeric(as.factor(third))
     y <- as.factor(second)
-  }
-  else {
-    y <- as.factor(allLabeled$sentiment)
   }
   
   
@@ -957,9 +956,12 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=FALSE)
                         allLabeled$ensemble_neg,
                         allLabeled$lexicon_compound)
   
-  colnames(x) <- c("maxEntPrediction", "maxEntProbability", "svmPrediction", "glmnetPrediction", "glmnetProbability",
-                "consensusCount", "probabilityLabel", "ensemble_pos", "ensemble_neg", "lexicon_pos",
-                  "lexicon_neu"  , "ensemble_neg", "lexicon_compound")
+  colnames(x) <- c("maxEntPrediction", "maxEntProbability", 
+                       "svmPrediction", "svmnetProbability", 
+                       "glmnetPrediction", "glmnetProbability",
+                       "consensusCount", "probabilityLabel", "consensusLabel",
+                       "ensemble_pos", "ensemble_neg", "lexicon_pos",
+                       "lexicon_neu"  , "ensemble_neg", "lexicon_compound")
   
   # sentiment,predictedLabel,actualLabel,maxEntPrediction,maxEntProbability,svmPrediction,svmProbability,glmnetPrediction,glmnetProbability,consensusCount,probabilityLabel,consensusLabel,python_sentiment,ensemble_pos,ensemble_neg,lexicon pos,lexicon_neu,ensemble_neg,lexicon_compound
 
@@ -968,12 +970,13 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=FALSE)
   #y <- y[1:8600]
   #second <- second[1:8600]
     
-  model <- svm(x, y) 
+  svmModel <- svm(x, y) 
   
-  pred <- predict(model, x)
+  pred <- predict(svmModel, x)
   
-  print(paste("Predictions made!"))
   predAndY <- cbind.data.frame(pred, y, second)
+  
+  print(paste("Predictions on labeled august and march:"))
   
   print( table(pred, y) )
   
@@ -998,29 +1001,37 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=FALSE)
                         sample$ensemble_neg,
                         sample$lexicon_compound)
   
-  colnames(sampx) <- c("maxEntPrediction", "maxEntProbability", "svmPrediction", "glmnetPrediction", "glmnetProbability",
-                   "consensusCount", "probabilityLabel", "ensemble_pos", "ensemble_neg", "lexicon_pos",
+  colnames(x) <- c("maxEntPrediction", "maxEntProbability", 
+                   "svmPrediction", "svmnetProbability", 
+                   "glmnetPrediction", "glmnetProbability",
+                   "consensusCount", "probabilityLabel", "consensusLabel",
+                   "ensemble_pos", "ensemble_neg", "lexicon_pos",
                    "lexicon_neu"  , "ensemble_neg", "lexicon_compound")
   
-  pred <- predict(model, sampx)
+  print(paste("Predictions on labeled sample from March:"))
+  
+  pred <- predict(svmModel, sampx)
   
   sampy <- sample$X.correct..human.label
   
   if (tryJustNeutralOrNot == TRUE)
   {
-    firsty <- gsub("1", "NotNeutral", as.charaacter(sampy))
-    firsty <- gsub("3", "NotNeutral", as.charaacter(firsty))
-    firsty <- gsub("2", "Neutral", as.charaacter(firsty))
+    firsty <- gsub("1", "NotNeutral", as.character(sampy))
+    firsty <- gsub("3", "NotNeutral", as.character(firsty))
+    firsty <- gsub("2", "Neutral", as.character(firsty))
     newsampy <- as.factor(firsty)
   }
-  else {
-    firsty <- gsub("1", "Negative", as.charaacter(sampy))
-    firsty <- gsub("3", "Positive", as.charaacter(firsty))
+  
+  if (tryJustNeutralOrNot == FALSE)
+  {
+    firsty <- gsub("1", "Negative", as.character(sampy))
+    firsty <- gsub("3", "Positive", as.character(firsty))
     firsty <- gsub("2", "Neutral", as.character(firsty))
-    newsampy <- as.factor(sampy)
+    newsampy <- as.factor(firsty)
   }
   
-  print( table(pred, sampy) )
+  print( table(pred, newsampy) )
   
+  save(svmModel, file="svmModel.RData")
   #predAndY
 }
