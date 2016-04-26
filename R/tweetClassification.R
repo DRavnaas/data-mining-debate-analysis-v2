@@ -1,10 +1,10 @@
 
-  # Flip doInstall to TRUE to install packages required by this R file
+# Flip doInstall to TRUE to install packages required by this R file
 
 doInstall <- FALSE
 toInstall <- c("maps", "ggplot2", "RTextTools", "caret", "RWeka", "tm", "e1071")
 if(doInstall){install.packages(toInstall, repos = "http://cran.us.r-project.org")}
-  lapply(toInstall, library, character.only = TRUE)
+lapply(toInstall, library, character.only = TRUE)
 
 library(ggplot2)
 library(maps)
@@ -55,9 +55,9 @@ trainAndEvaluate <- function(csvPath="AugAndMarchLabeledQuote.csv",
 
 # Drop neutral labels, just train/test on positive/negative
 tryTweetsNoNeutral <- function(csvPath="AugSentiment.csv", 
-                            verbose=FALSE, 
-                            doJustOneFold=FALSE,
-                            saveToFolder=NULL)
+                               verbose=FALSE, 
+                               doJustOneFold=FALSE,
+                               saveToFolder=NULL)
 {
   print('Reading in tweets (and removing neutrals)')
   tweetRows <-
@@ -73,10 +73,10 @@ tryTweetsNoNeutral <- function(csvPath="AugSentiment.csv",
   numNeutral <- dim(tweetRows[tweetRows$sentiment=="Neutral",])[1]
   numNegative <- dim(tweetRows[tweetRows$sentiment=="Negative",])[1]
   print(paste("# positive = ", numPositive, ", # neutral = ", numNeutral, ", # negative =", numNegative))
-
+  
   tweetsNoNeutral <- tweetRows[tweetRows$sentiment!="Neutral",]
   print(paste("# rows after removing neutrals = ", dim(tweetsNoNeutral)[1]))
- 
+  
   if (is.null(saveToFolder) == FALSE && length(saveToFolder) > 0)
   {
     print("Saving filtered data to folder...")
@@ -90,20 +90,20 @@ tryTweetsNoNeutral <- function(csvPath="AugSentiment.csv",
     
     # Save filtered data?
     filteredDataPath = paste(saveToFolder, "\\FilteredData.csv", sep="")
-  
+    
     write.csv(tweetsNoNeutral, filteredDataPath, fileEncoding="UTF-8")
     
   }
-    
+  
   tryTweetsRun(tweetRows=tweetsNoNeutral, verbose=verbose, doJustOneFold=doJustOneFold, saveToFolder=saveToFolder)
 }
 
 tryTweetsWithNeutral<- function(csvPath="AugSentiment.csv", 
-                                   verbose=FALSE, 
-                                   doJustOneFold=TRUE,
-                                   saveToFolder=NULL)
+                                verbose=FALSE, 
+                                doJustOneFold=TRUE,
+                                saveToFolder=NULL)
 {
-
+  
   print('Reading in tweets (with neutrals)')
   tweetRows <-
     read.csv(
@@ -111,13 +111,13 @@ tryTweetsWithNeutral<- function(csvPath="AugSentiment.csv",
       header = TRUE,
       encoding = "UTF-8"
     )
-
+  
   print(paste("# rows read in = ", dim(tweetRows)[1]))
   numPositive <- dim(tweetRows[tweetRows$sentiment=="Positive",])[1]
   numNeutral <- dim(tweetRows[tweetRows$sentiment=="Neutral",])[1]
   numNegative <- dim(tweetRows[tweetRows$sentiment=="Negative",])[1]
   print(paste("# positive =", numPositive, ", # neutral =", numNeutral, ", # negative =", numNegative))
-    
+  
   tryTweetsRun(tweetRows=tweetsRows, verbose=verbose, doJustOneFold=doJustOneFold, saveToFolder=saveToFolder, testRows=NULL)
 }
 
@@ -157,7 +157,7 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
     # Create matrix doesn't work with ngram > 1
     useCreateMatrix = FALSE
   }
-    
+  
   if (useCreateMatrix ==TRUE)
   {
     # This is a bit buggy (ngramLength > 1 doesn't work at the very least)
@@ -187,7 +187,7 @@ buildDocTermMatrix <- function(curFold, verbose=FALSE)
     cat("Creating term matrix... ")
     
     corpus <- Corpus(VectorSource(curFold$text))
-        
+    
     # do a variety of transformations that are intended to 
     # separate/normalize words
     toSpace <- content_transformer(function(x,pattern)
@@ -273,10 +273,10 @@ trainOnAugTestOnMarch <- function(verbose=FALSE, dropNeutral=TRUE, sentColumnNam
 
 # Main helper function to train and evaluate input tweets
 tryTweetsRun <- function(tweetRows, 
-                            verbose=FALSE, 
-                            doJustOneFold=TRUE, 
-                            saveToFolder=NULL,
-                            testRows=NULL)
+                         verbose=FALSE, 
+                         doJustOneFold=TRUE, 
+                         saveToFolder=NULL,
+                         testRows=NULL)
 {
   
   if (verbose == TRUE)
@@ -347,7 +347,7 @@ tryTweetsRun <- function(tweetRows,
   {
     foldNum <- foldNum + 1
     print(paste("  Fold", foldNum, ": of", dim(curFold)[1], "rows"))
-
+    
     docTerms <- buildDocTermMatrix(curFold, verbose=FALSE)
     #inspect(docTerms)
     
@@ -383,7 +383,7 @@ tryTweetsRun <- function(tweetRows,
       print("  Confusion matrix:")
       print(confusionDetails)
     }
- 
+    
     accuracyForFold.glmnet = "NA"
     if (length(algos) > 1)
     {
@@ -400,7 +400,7 @@ tryTweetsRun <- function(tweetRows,
         
       }
     }
-       
+    
     accuracyForFold.svm = "NA"
     if (length(algos) > 2)
     {
@@ -408,7 +408,7 @@ tryTweetsRun <- function(tweetRows,
       accuracyForFold.svm <-
         recall_accuracy(as.numeric(as.factor(curFold$sentiment[testRows])), results[, "SVM_LABEL"])
       accSumAcrossFolds.svm <- accSumAcrossFolds.svm + accuracyForFold.svm
-    
+      
       if (verbose == TRUE)
       {
         confusionDetails <- confusionMatrix(results$SVM_LABEL, as.numeric(as.factor(curFold$sentiment[testRows])))
@@ -416,10 +416,10 @@ tryTweetsRun <- function(tweetRows,
         print(confusionDetails)
       }
     }
-
+    
     print(cat("  Fold accuracy: maxent=", accuracyForFold.maxEnt, ", svm=", accuracyForFold.svm, ", glmnet=",
               accuracyForFold.glmnet, " "))
-
+    
     analytics = create_analytics(container, results)
     ensembleResults <- ensembleResults + as.matrix(analytics@ensemble_summary)
     
@@ -461,7 +461,7 @@ tryTweetsRun <- function(tweetRows,
       break
     }
   }
-
+  
   # model summary - print out more details when we are running 
   # one algorithm and one fold (and asked for verbose output)
   
@@ -472,7 +472,7 @@ tryTweetsRun <- function(tweetRows,
     #print(summary(analytics))
     #print(head(analytics@document_summary))
   }
-    
+  
   meanAcc.maxEnt <- accSumAcrossFolds.maxEnt / foldNum
   
   print(cat("Mean accuracy across folds, MAXENT: ", meanAcc.maxEnt, " "))
@@ -480,7 +480,7 @@ tryTweetsRun <- function(tweetRows,
   meanAcc.glmnet <- accSumAcrossFolds.glmnet / foldNum
   
   print(cat("Mean accuracy across folds, glmnet: ", meanAcc.glmnet, " "))
-
+  
   meanAcc.svm <- accSumAcrossFolds.svm / foldNum
   
   print(as.character(cat("Mean accuracy across folds, svm:    ", meanAcc.svm, " ")))
@@ -496,7 +496,7 @@ tryTweetsRun <- function(tweetRows,
   {
     print(Sys.time())
   }
-
+  
 }
 
 
@@ -525,27 +525,27 @@ trainAndPredict <- function(tweetRowsTrain, predictRows, verbose=FALSE, saveToFo
   
   
   docTerms <- buildDocTermMatrix(curFold, verbose)
-    
+  
   # build container for this fold = train versus test rows and label
   container = create_container(
-      docTerms,
-      as.numeric(as.factor(curFold$sentiment)),
-      trainSize = trainRows,
-      testSize = testRows,
-      virgin = FALSE
-    )
-    
+    docTerms,
+    as.numeric(as.factor(curFold$sentiment)),
+    trainSize = trainRows,
+    testSize = testRows,
+    virgin = FALSE
+  )
+  
   # For each model, train and get test results and accuracy
   # You can lump these together to run as an ensemble, but they take a while to run.
   #algos = c("GLMNET", "MAXENT") # this runs relatively quick (SVM needs a lot of iterations)
   #algos = c("GLMNET", "SVM")  #SVM and GLMNET have the edge usually over MAXENT for accuracy
   algos = c("MAXENT", "GLMNET", "SVM")
-    
+  
   cat("Running ", algos, "...")
-    
+  
   models = train_models(container, algorithms = algos)
   results = classify_models(container, models)
-
+  
   # save off trained classifier, container, labels and results
   if (is.null(saveToFolder) == FALSE && length(saveToFolder) > 0)
   {
@@ -574,7 +574,7 @@ buildAllLabeledFromCsvs <- function(marchSentimentColumnName = "sentiment", save
   AugCsvPath <- "AugSentiment.csv"
   marchB4Path <- "March10th_before_labeledforR.csv"
   marchAfterPath <- "March10th_after_labeledforR.csv"
-
+  
   print(paste("Reading labeled rows from", AugCsvPath, ",", marchB4Path, ",", marchAfterPath))
   
   augSentiment <- readLabeledDataFrame(AugCsvPath)
@@ -583,7 +583,7 @@ buildAllLabeledFromCsvs <- function(marchSentimentColumnName = "sentiment", save
   
   # We now have three data frames with consistent column names
   allLabeled <- rbind(augSentiment, marchb4sentiment, marchAfterSentiment)
-
+  
   if (is.null(saveToCsvPath)== FALSE && length(saveToCsvPath) > 0)
   {
     # August data has some linefeeds that causes excel problems
@@ -602,33 +602,33 @@ readLabeledDataFrame <- function(csvPath, idColumn = "id", sentimentColumnName =
     header = TRUE,
     encoding = "UTF-8"
   )
-
+  
   print(paste("# rows read = ", dim(fulldataFrame)[1]))
-    
+  
   if (dim(fulldataFrame)[2] < 20)
   {
     # March files have a couple columns we have to shift around.
     fulldataFrame$id <- fulldataFrame[,idColumn]
     fulldataFrame$sentiment <- fulldataFrame[,sentimentColumnName]
-  
+    
     #print(fulldataFrame$id[1])
     #print(fulldataFrame$sentiment[1])
   }
   
   
   miniDataFrame <- cbind.data.frame(fulldataFrame$id, 
-                                      fulldataFrame$tweet_id,
-                                      fulldataFrame$candidate, 
-                                      fulldataFrame$tweet_created,
-                                      fulldataFrame$sentiment,
-                                      fulldataFrame$tweet_location,
-                                      fulldataFrame$user_timezone,  
-                                      fulldataFrame$text
-                                      )
- 
+                                    fulldataFrame$tweet_id,
+                                    fulldataFrame$candidate, 
+                                    fulldataFrame$tweet_created,
+                                    fulldataFrame$sentiment,
+                                    fulldataFrame$tweet_location,
+                                    fulldataFrame$user_timezone,  
+                                    fulldataFrame$text
+  )
+  
   
   colnames(miniDataFrame) <- c("id", "tweet_id", "candidate", "tweet_created", 
-                              "sentiment", "tweet_location", "user_timezone", "text")
+                               "sentiment", "tweet_location", "user_timezone", "text")
   
   
   miniDataFrame
@@ -663,8 +663,8 @@ buildAllUnlabeledFromCsvs <- function(saveToCsvPath = NULL)
   
   allMarchUnlabeled  
   
- 
-   
+  
+  
 }
 
 # Read in an unlabeled file 
@@ -729,7 +729,7 @@ predictOnTrainingSet <- function(tweetRows, verbose=FALSE, saveToCsvPath)
   # Our train and test rows are exactly the same.
   
   numRows <- dim(tweetRows)[1]
- 
+  
   trainRows <- 1:numRows
   testRows <- 1:numRows
   
@@ -742,7 +742,7 @@ predictOnTrainingSet <- function(tweetRows, verbose=FALSE, saveToCsvPath)
     testSize = testRows,
     virgin = FALSE
   )
-
+  
   algos = c("MAXENT", "GLMNET", "SVM")
   
   cat("Running ", algos, "...")
@@ -774,7 +774,7 @@ predictOnTrainingSet <- function(tweetRows, verbose=FALSE, saveToCsvPath)
   
   # At the moment, we are going with the consensus label
   tweetRowsWithPrediction$predictedLabel <- docResults$CONSENSUS_CODE
-
+  
   tweetRowsWithPrediction$text <- replaceLineFeedsFromColumn(tweetRowsWithPrediction$text) 
   
   print(paste("Saving results to ", saveToCsvPath))
@@ -796,11 +796,11 @@ predictLabelsAfterTraining <- function(dropNeutrals = TRUE, csvOutputPath = "UnL
   }
   
   allMarchUnlabeled <- buildAllUnlabeledFromCsvs()
-
+  
   allMarchUnlabeled$sentiment <- c("Positive",rep("Negative",c(nrow(allMarchUnlabeled)-1)))
-
+  
   allTrainAndUnlabeled <- rbind(allLabeled, allMarchUnlabeled)
-      
+  
   numRows <- dim(allLabeled)[1]
   endTrain <- numRows
   trainRows <- 1:endTrain
@@ -829,7 +829,7 @@ predictLabelsAfterTraining <- function(dropNeutrals = TRUE, csvOutputPath = "UnL
   # since we faked the sentiment for the unlabeled rows.
   # But we will now have per row/ per algo prediction info.
   results = classify_models(container, models)  
-
+  
   print("Prediction done!")
   
   # This all took forever, so let's save it.
@@ -863,7 +863,7 @@ predictLabelsAfterTraining <- function(dropNeutrals = TRUE, csvOutputPath = "UnL
   
   # At the moment, we are going with the consensus label
   allPredictions$predictedLabel <- docResults$CONSENSUS_CODE
-
+  
   if (is.null(csvOutputPath) == FALSE)
   {
     allPredictions$text <- replaceLineFeedsFromColumn(allPredictions$text)  
@@ -923,7 +923,7 @@ dropNeutrals <- function(tweetRows)
   numNeutral <- dim(tweetRows[tweetRows$sentiment=="Neutral",])[1]
   numNegative <- dim(tweetRows[tweetRows$sentiment=="Negative",])[1]
   print(paste("# positive = ", numPositive, ", # neutral = ", numNeutral, ", # negative =", numNegative))
- 
+  
   tweetsNoNeutral <- tweetRows[tweetRows$sentiment!="Neutral",]
   print(paste("# rows after removing neutrals = ", dim(tweetsNoNeutral)[1]))
   
@@ -937,15 +937,15 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=TRUE)
   allLabeled <- read.csv("labeledWithPredictionsQuoteEdit.csv", sep=",")
   
   y <- as.factor(allLabeled$sentiment)
-
+  
   # sentiment,predictedLabel,actualLabel,maxEntPrediction,maxEntProbability,svmPrediction,svmProbability,glmnetPrediction,glmnetProbability,consensusCount,probabilityLabel,consensusLabel,python_sentiment,ensemble_pos,ensemble_neg,lexicon pos,lexicon_neu,ensemble_neg,lexicon_compound
   sampleColNames <- c(
-                  "maxEntPrediction", "maxEntProbability", 
-                   "svmPrediction", "svmnetProbability", 
-                   "glmnetPrediction", "glmnetProbability",
-                   "consensusCount", "probabilityLabel", "consensusLabel",
-                    "ensemble_pos", "ensemble_neg", "lexicon_pos",
-                    "lexicon_neu"  , "ensemble_neg", "lexicon_compound")
+    "maxEntPrediction", "maxEntProbability", 
+    "svmPrediction", "svmnetProbability", 
+    "glmnetPrediction", "glmnetProbability",
+    "consensusCount", "probabilityLabel", "consensusLabel",
+    "ensemble_pos", "ensemble_neg", "lexicon_pos",
+    "lexicon_neu"  , "ensemble_neg", "lexicon_compound")
   
   if (tryJustNeutralOrNot == TRUE)
   {
@@ -970,7 +970,7 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=TRUE)
                         allLabeled$consensusLabel,
                         
                         #allLabeled$python_sentiment,
-    
+                        
                         allLabeled$ensemble_pos,
                         allLabeled$ensemble_neg,
                         allLabeled$lexicon_pos,
@@ -979,7 +979,7 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=TRUE)
                         allLabeled$lexicon_compound)
   
   colnames(x) <- sampleColNames
-    
+  
   svmModel <- svm(x, y) 
   
   pred <- predict(svmModel, x)
@@ -1005,15 +1005,15 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=TRUE)
                             sample$consensusCount,
                             sample$probabilityLabel,
                             sample$consensusLabel,
-  
-                        #allLabeled$python_sentiment,
-  
-                        sample$ensemble_pos,
-                        sample$ensemble_neg,
-                        sample$lexicon_pos,
-                        sample$lexicon_neu,
-                        sample$ensemble_neg,
-                        sample$lexicon_compound)
+                            
+                            #allLabeled$python_sentiment,
+                            
+                            sample$ensemble_pos,
+                            sample$ensemble_neg,
+                            sample$lexicon_pos,
+                            sample$lexicon_neu,
+                            sample$ensemble_neg,
+                            sample$lexicon_compound)
   
   colnames(x) <- sampleColNames
   
@@ -1054,18 +1054,18 @@ tryUSAMap <- function(titleSuffix="")
   #head(Prison)
   #Prison$region <- Prison$stateName
   
-
-    
+  
+  
   all_states <- map_data("state")
   all_states
   head(all_states)
-
+  
   # this will have to change for the state/region
   
-
+  
   Prison <- read.csv("states.csv")
   Prison$region <- Prison$State
-   
+  
   
   Total <- merge(all_states, Prison, by="region")
   
@@ -1097,10 +1097,10 @@ tryUSAMap <- function(titleSuffix="")
   
   p <- ggplot()
   p <- p + geom_polygon(data=Total, aes(x=long, y=lat, group = group, fill=Total$bwRatio),colour="white"
-                        ) + scale_fill_gradientn(colors=colors)
-                                                   # c("darkgreen","green","grey50","thistle2","red","darkred"))
-
-                          #) + scale_fill_continuous(low = "darkgreen", high = "darkred", guide="colorbar")
+  ) + scale_fill_gradientn(colors=colors)
+  # c("darkgreen","green","grey50","thistle2","red","darkred"))
+  
+  #) + scale_fill_continuous(low = "darkgreen", high = "darkred", guide="colorbar")
   P1 <- p + theme_bw()  + labs(fill = legend 
                                ,title = plotTitle, x="", y="")
   P1 + scale_y_continuous(breaks=c()) + scale_x_continuous(breaks=c()) + theme(panel.border =  element_blank())
@@ -1112,7 +1112,7 @@ createUSStatesFromColumn <- function(locationColumn)
 {
   # Get a column all blanked out with the right length
   newColumn <-  rep("", length(locationColumn))
- 
+  
   # These have to be in the same order  
   stateList <- c("alabama", 
                  "alaska",
@@ -1154,17 +1154,17 @@ createUSStatesFromColumn <- function(locationColumn)
                  "oregon",
                  "pennsylvania",
                  "rhode island",
-"south carolina",
-"south dakota",
-"tennessee",
-"texas",
-"utah",
-"vermont",
-"virginia",
-"washington",
-  "west virginia",
-  "wisconsin",
-  "wyoming")
+                 "south carolina",
+                 "south dakota",
+                 "tennessee",
+                 "texas",
+                 "utah",
+                 "vermont",
+                 "virginia",
+                 "washington",
+                 "west virginia",
+                 "wisconsin",
+                 "wyoming")
   
   abbrevList <- c(", AL", ", AK", ", AZ", ", AR", 
                   ", CA", ", CO", ", CT", ", DE",
@@ -1189,20 +1189,20 @@ createUSStatesFromColumn <- function(locationColumn)
                   ", OR",
                   ", PA",
                   ", RI",
-", SC",
+                  ", SC",
                   ", SD",
-", TN",
+                  ", TN",
                   ", TX",
-", UT",
+                  ", UT",
                   ", VT",
-", VA",
+                  ", VA",
                   ", WA",
-", WV",
+                  ", WV",
                   ", WI",
-", WY"
-)
- 
- 
+                  ", WY"
+  )
+  
+  
   if (length(stateList) != length(abbrevList))
   {
     print("Warning, state list doesn't match abbreviation list!")
@@ -1219,12 +1219,12 @@ createUSStatesFromColumn <- function(locationColumn)
     stateHits <- rbind(
       grep(stateList[i], locationColumn, ignore.case=TRUE),
       grep(abbrevList[i], locationColumn, ignore.case=TRUE)
-      )
+    )
     newColumn[stateHits] <- rep(stateList[i], length(stateHits))
-  
+    
   }
   
   newColumn  
   
-
+  
 }
