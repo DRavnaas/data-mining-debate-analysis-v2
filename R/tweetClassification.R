@@ -991,6 +991,8 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=TRUE)
   print( table(pred, y) )
   
   
+  # Note we clip at 100 - there's some "count" columns after
+  # the real rows
   sample <- read.csv("Sample_CombinedResultsWithAllStats.csv")
   sample <- sample[1:100,]
   
@@ -1105,3 +1107,124 @@ tryUSAMap <- function(titleSuffix="")
   
 }
 
+# I'm sure this could be done better...
+createUSStatesFromColumn <- function(locationColumn)
+{
+  # Get a column all blanked out with the right length
+  newColumn <-  rep("", length(locationColumn))
+ 
+  # These have to be in the same order  
+  stateList <- c("alabama", 
+                 "alaska",
+                 "arizona",
+                 "arkansas",
+                 "california",
+                 "colorado",
+                 "connecticut",
+                 "delaware",
+                 "district of columbia",
+                 "florida",
+                 "georgia",
+                 "hawaii",
+                 "idaho",
+                 "illinois",
+                 "indiana",
+                 "iowa",
+                 "kansas",
+                 "kentucky",
+                 "louisiana",
+                 "maine",
+                 "maryland",
+                 "massachusetts",
+                 "michigan",
+                 "minnesota",
+                 "mississippi",
+                 "missouri",
+                 "montana",
+                 "nebraska",
+                 "nevada",
+                 "new hampshire",
+                 "new jersey",
+                 "new mexico",
+                 "new york",
+                 "north carolina",
+                 "north dakota",
+                 "ohio",
+                 "oklahoma",
+                 "oregon",
+                 "pennsylvania",
+                 "rhode island",
+"south carolina",
+"south dakota",
+"tennessee",
+"texas",
+"utah",
+"vermont",
+"virginia",
+"washington",
+  "west virginia",
+  "wisconsin",
+  "wyoming")
+  
+  abbrevList <- c(", AL", ", AK", ", AZ", ", AR", 
+                  ", CA", ", CO", ", CT", ", DE",
+                  ", DC", ", FL", ", GA", ", HI",
+                  ", ID", ", IL", ", IN", ", IA", 
+                  ", KS", ", KY", ", LA", ", ME", 
+                  ", MD", ", MA", " ,MI",
+                  ", MN",
+                  ", MS",
+                  ", MO",
+                  ", MT",
+                  ", NE",
+                  ", NV",
+                  ", NH",
+                  ", NJ",
+                  ", NM",
+                  ", NY",
+                  ", NC",
+                  ", ND",
+                  ", OH",
+                  ", OK",
+                  ", OR",
+                  ", PA",
+                  ", RI",
+", SC",
+                  ", SD",
+", TN",
+                  ", TX",
+", UT",
+                  ", VT",
+", VA",
+                  ", WA",
+", WV",
+                  ", WI",
+", WY"
+)
+ 
+ 
+  if (length(stateList) != length(abbrevList))
+  {
+    print("Warning, state list doesn't match abbreviation list!")
+    return
+  }
+  
+  # convert what we can to a US state
+  # (we look for two specific patterns in genera,
+  # but this field is set by the user, so it could be
+  # just a city or slang or whatever)
+  
+  for (i in 1:length(stateList))
+  {
+    stateHits <- rbind(
+      grep(stateList[i], locationColumn, ignore.case=TRUE),
+      grep(abbrevList[i], locationColumn, ignore.case=TRUE)
+      )
+    newColumn[stateHits] <- rep(stateList[i], length(stateHits))
+  
+  }
+  
+  newColumn  
+  
+
+}
