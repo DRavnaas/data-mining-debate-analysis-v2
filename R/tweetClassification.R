@@ -1090,6 +1090,75 @@ tryLabellingJustNeutral <- function(tryJustNeutralOrNot=TRUE)
   #predAndY
 }
 
+# this builds a states.csv file for use by the plotting functions.
+buildStatesCsv <- function()
+{
+  csvPath <- "excel/unlabeled_python_ensemble.csv"
+  sampleData <- read.csv(csvPath,
+                         header = TRUE)
+  sampleData <- cbind.data.frame(sampleData$id, sampleData$tweet_location, sampleData$sentiment, 
+                                 sampleData$candidate, sampleData$text)
+  colnames(sampleData) <- c("id", "tweet_location", "sentiment", "candidate", "text")
+  
+  
+  # Filter out tweets that don't have a recognizable state
+  sampleData$state <- createUSStatesFromColumn(sampleData$tweet_location)
+  sampleData <- sampleData[sampleData$state != "",]
+  
+  nationalNegSum <- dim(sampleData[sampleData$sentiment=="Negative",])[1]
+  nationalTotal <- dim(sampleData)[1]
+  nationalNegRatio <- nationalNegSum / nationalTotal
+  nationalPosRatio <- 1 - nationalNegRatio
+  
+  stateMatrix = read.csv("states.csv", header=TRUE)
+
+  # Now find the per state ration and absolute value difference from the mean
+  
+  for (rowNum in 1:dim(stateMatrix)[1])
+  {
+    if (stateMatrix$State[rowNum] == "USA")
+    {
+    
+      stateMatrix[rowNum,"negRatio"] = nationalNegRatio
+      stateMatrix[rowNum,"posRatio"] = nationalPosRatio
+  
+    } else  
+    {
+     
+      curState = stateMatrix$State[rowNum] 
+      
+      curStateData <- sampleData[sampleData$state==curState,]
+      
+      stateNegSum <- dim(curStateData[curStateData$sentiment=="Negative",])[1]
+      
+      stateNegDiff <- 0
+      statePosDiff <- 0
+      
+      stateTotal <- dim(curStateData)[1]
+      
+      if (stateTotal != 0)
+      {
+        stateNegRatio <- stateNegSum / stateTotal
+        statePosRatio <- 1 - stateNegRatio
+      
+        # What we write out is actually the difference
+        stateNegDiff <- nationalNegRatio - stateNegRatio
+        statePosDiff <- nationalPosRatio - statePosRatio
+      }
+      
+      # This is if you want the delta from the mean
+      stateMatrix$negRatio[rowNum] <- stateNegDiff
+      stateMatrix$posRatio[rowNum] <- statePosDiff
+      
+      # Or just the raw value = everyone hates trump
+      stateMatrix$negRatio[rowNum] <- stateNegRatio
+      stateMatrix$posRatio[rowNum] <- statePosRatio
+      
+    }
+  }
+  
+  write.csv(stateMatrix,"states.csv")
+}
 
 
 tryUSAMap <- function(titleSuffix="") 
@@ -1113,15 +1182,15 @@ tryUSAMap <- function(titleSuffix="")
   
   Total <- Total[order(Total$order),] 
   
-  plotTitle <- paste("Tweet Sentiment by State, Mainland US", titleSuffix)
-  legend <- "Tweet sentiment for a candidate (clarify)"
+  plotTitle <- paste("Relative tweet sentiment by state, Mainland US", titleSuffix)
+  legend <- "% negative tweet sentiment for a candidate"
   
   # color on the negative ratio (ie: must match color order)
   Total$negRatio <- Total$negRatio
   
   # colors built below assume negRatio ordering
   
-  numColorsEachSide <- 3
+  numColorsEachSide <- 4
   greens <- colorRampPalette(c("darkgreen", "white"))
   posColors <- greens(numColorsEachSide+1)
   
@@ -1246,7 +1315,7 @@ createUSStatesFromColumn <- function(locationColumn)
   }
   
   # convert what we can to a US state
-  # (we look for two specific patterns in genera,
+  # (we look for two specific patterns in general,
   # but this field is set by the user, so it could be
   # just a city or slang or whatever)
   
