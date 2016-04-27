@@ -1,0 +1,53 @@
+
+input file = AugAndMarchLabeledQuote.csv (labeled August and March debate data)
+
+Run with 5 fold validation
+
+Run via trainAndEvaluate()
+
+Without neutral classification (ie: just positive / negative labels in train/test set)
+11063 rows, # train = 8850 / # test = 2213
+
+  Mean ensemble results across folds:
+         mean coverage mean accuracy
+  n >= 1         1.000         0.852
+  n >= 2         1.000         0.852
+  n >=3          0.838         0.898
+
+  Mean majority vote label across folds:
+           Predicted - Predicted +
+  Actual -      1550.8       189.8
+  Actual +       186.2       286.2
+
+  Mean probability label across folds:
+           Predicted - Predicted +
+  Actual -      1682.2       271.2
+  Actual +        54.8       204.8
+
+
+Run via tryTweetsWithNeutral(csvPath="AugAndMarchLabeledQuote.csv")
+14263 rows, # train = 11410 / # test = 2853
+
+With neutral classification:
+
+  Mean ensemble results across folds:
+
+         mean coverage mean accuracy
+  n >= 1         1.000         0.684
+  n >= 2         0.988         0.688
+  n >=3          0.660         0.764
+  
+  Mean majority vote label across folds:
+
+           Predicted - Predicted ~ Predicted +
+  Actual -      1319.4       299.4       155.0
+  Actual ~       270.2       242.0        76.8
+  Actual +       148.2        98.6       243.4
+  
+  Mean probability label across folds:
+
+           Predicted - Predicted ~ Predicted +
+  Actual -      1638.8       466.2       256.0
+  Actual ~        49.6       120.8        29.4
+  Actual +        49.4        53.0       189.8
+
