@@ -1288,10 +1288,10 @@ trainOnLabeldTestOnSample <- function(sampleCsvPath="SampleFromNewPredictions.cs
   tryTweetsRun(tweetRows=allData, doJustOneFold=doJustOneFold, verbose=verbose, testRows=testRows)
 }
 
-buildHistogram <- function(csvPath="AugSentiment.csv", plotOthers=FALSE)
+buildHistogram <- function(csvPath="AugSentiment.csv", topOnly=FALSE)
 {
-  plotBefore <- FALSE
-  plotAfter <- TRUE
+  plotBefore <- TRUE
+  plotAfter <- FALSE
   
   sampleData <- read.csv(csvPath,
                          header = TRUE)
@@ -1321,13 +1321,20 @@ buildHistogram <- function(csvPath="AugSentiment.csv", plotOthers=FALSE)
     sampleData[sampleData$candidate == "Scott Walker","candidate"] <- "Other"
     sampleData[sampleData$candidate == "Rand Paul","candidate"] <- "Other"
     
-    if (plotOthers == FALSE)
+    if (topOnly == TRUE)
     {
       sampleData <- sampleData[sampleData$candidate!="Other",]
     }
   }
   else {
-    levels(sampleData$candidate) <- c("Donald Trump", "John Kasich", "Marco Rubio", "Ted Cruz")
+    #levels(sampleData$candidate) <- c("Donald Trump", "John Kasich", "Marco Rubio", "Ted Cruz")
+    
+    
+    if (topOnly == TRUE)
+    {
+      sampleData <- sampleData[sampleData$candidate!="John Kasich",]
+      sampleData <- sampleData[sampleData$candidate!="Marco Rubio",]
+    }
     
     if (plotBefore == FALSE)
     {
