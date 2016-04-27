@@ -37,7 +37,7 @@ def processTweet(tweet):
     # #Convert www.* or https?://* to URL
     # tweet = re.sub('((www\.[^\s]+)|(https?://[^\s]+))','URL',tweet)
     # #Convert @username to AT_USER
-    # tweet = re.sub('@[^\s]+','AT_USER',tweet)
+    # ##tweet = re.sub('@[^\s]+','AT_USER',tweet)
     # #Remove additional white spaces
     # tweet = re.sub('[\s]+', ' ', tweet)
     # #Replace #word with word
@@ -162,20 +162,28 @@ def classifyAlgo(trainSet, testSet):
          m1_prob = model1.predict_proba([testTweet])[0]
          m2_prob = model2.predict_proba([testTweet])[0]
          vad_res = sig.polarity_scores("".join(test_point[0]))
+
          if vad_res['neg'] == vad_res['pos'] == 0:
              vad_prob = [0.5,0.5]
          else:
              vad_prob = [vad_res['neg']/(vad_res['neg']+vad_res['pos']), vad_res['pos']/(vad_res['neg']+vad_res['pos'])]
-         m1_weight = 2
+         m1_weight = 1
          m2_weight = 2
          vad_weight = 1
          combined_prob = [m1_prob[0]*m1_weight+m2_prob[0]*m2_weight+vad_prob[0]*vad_weight,m1_prob[1]*m1_weight+m2_prob[1]*m2_weight+vad_prob[1]*vad_weight ]
+
          if combined_prob[0] > combined_prob[1]:
              pred_class = '|negative|'
          else:
              pred_class = '|positive|'
+
          if str(pred_class).lower() == str(test_point[1]).lower():
+             print "right :    " , test_point
+             print pred_class
              correct += 1
+         else:
+             print "WRONG :       " , test_point
+             print pred_class
 
     # for i in range(0, len(predict)):
     #     total +=1
@@ -206,16 +214,18 @@ def preprocess(data_file):
     return cleanTweets
 
 if __name__=='__main__':
-    CROSSVALIDFLAG = True
+    CROSSVALIDFLAG = False
 
     if CROSSVALIDFLAG:
-        data_file = '../data/gop/august/august_march.csv'
+        data_file = '../data/gop/august/august_full_high_conf_unique_form.csv'  #89%
+        #data_file = '../data/gop/august/august_march.csv' 86 %
+
         cleanTweets = preprocess(data_file)
         random.shuffle(cleanTweets)
         cross_validation(cleanTweets, classifyAlgo)
     else:
-        train_file  = '../data/gop/august/august_full_form.csv'
-        test_file   = '../data/gop/march/combined_sample_unique_quote_form.csv'
+        train_file  = '../data/gop/august/august_full_high_conf_unique_form.csv'
+        test_file   = '../data/gop/march_test_form.csv'
 
         trainTweets = preprocess(train_file)
         testTweets  = preprocess(test_file)

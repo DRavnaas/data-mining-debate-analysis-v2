@@ -1,0 +1,52 @@
+
+input file = AuguSentiment.csv (labeled August debate data)
+
+Run with 5 fold validation
+
+Run via tryTweetsNoNeutral()
+
+Without neutral classification (ie: just positive / negative labels in train/test set)
+10729 rows, # train = 8583 / # test = 2146
+
+  Mean ensemble results across folds:"
+         mean coverage mean accuracy
+  n >= 1         1.000         0.854
+  n >= 2         1.000         0.854
+  n >=3          0.842         0.900
+
+  Mean majority vote label across folds:"
+           Predicted - Predicted +
+  Actual -      1523.2       180.8
+  Actual +       175.4       266.6
+  
+  Mean probability label across folds:"
+           Predicted - Predicted +
+  Actual -      1648.4       256.6
+  Actual +        50.2       190.8
+
+
+
+Run via tryTweetsWithNeutral()
+
+With neutral classification:
+13871 rows, # train = 11096 / # test = 2775
+
+  Mean ensemble results across folds:
+
+         mean coverage mean accuracy
+  n >= 1         1.000         0.686
+  n >= 2         0.990         0.688
+  n >=3          0.668         0.764
+
+  Mean majority vote label across folds:
+
+           Predicted - Predicted ~ Predicted +
+  Actual -      1296.4       298.8       148.8
+  Actual ~       263.2       236.0        69.2 
+  Actual +       139.2        93.6       229.8
+
+  Mean probability label across folds:
+         Predicted - Predicted ~ Predicted +
+  Actual -      1604.2       458.6       245.0
+  Actual ~        48.0       119.8        26.4
+  Actual +        46.6        50.0       176.4

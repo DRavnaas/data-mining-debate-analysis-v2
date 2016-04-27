@@ -210,8 +210,8 @@ def preprocess(data_file):
     return cleanTweets
 
 if __name__=='__main__':
-    NGRAMSFLAG = True
-    data_file = 'data/gop/august/august_candidates_form.csv'
+    NGRAMSFLAG = False
+    data_file = '../data/gop/august/august_full_form.csv'
     cleanTweets = preprocess(data_file)
     random.shuffle(cleanTweets)
     cross_validation(cleanTweets, classifyAlgo)
