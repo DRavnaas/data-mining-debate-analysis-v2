@@ -1,6 +1,6 @@
 
 # Flip doInstall to TRUE to install packages required by this R file
-
+# NOTE: on Windows, you need to run RStudio as admin to install packages!! 
 doInstall <- FALSE
 toInstall <- c("maps", "ggplot2", "RTextTools", "caret", "RWeka", "tm", "e1071")
 if(doInstall){install.packages(toInstall, repos = "http://cran.us.r-project.org")}
