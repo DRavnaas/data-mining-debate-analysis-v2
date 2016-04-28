@@ -6,7 +6,8 @@ num = 0
 
 headers = []
 
-with open('../data/gop/UnlabeledWithPredictions_v1.csv', 'rU') as csvFile:
+#with open('../data/gop/UnlabeledWithPredictions_v1.csv', 'rU') as csvFile:
+with open('/Users/Yogi/Study/4_Spring_16/DM/project/EVALUATION/predicted/unlabeled_python_ensemble.csv', 'rU') as csvFile:
     reader = csv.DictReader(csvFile)
 
 
@@ -38,9 +39,9 @@ with open('../data/gop/UnlabeledWithPredictions_v1.csv', 'rU') as csvFile:
 
 
 
+#with open('../data/gop/UnlabeledWithPredictions_v1_ts_separated.csv',"wb+") as ofile:
+with open('/Users/Yogi/Study/4_Spring_16/DM/project/EVALUATION/predicted/predicted_march_debate_v2.csv',"wb+") as ofile:
 
-
-with open('../data/gop/UnlabeledWithPredictions_v1_ts_separated.csv',"wb+") as ofile:
     writer = csv.DictWriter(ofile, fieldnames=headers)
     #print headers
     writer.writeheader()
